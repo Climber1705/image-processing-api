@@ -21,7 +21,7 @@ A **FastAPI**-powered RESTful service designed for efficient image management, p
 
 - **🧹 Cleanup and Maintenance**  
   - Automatically clean up `__pycache__` folders when the API is shut down
-  - 
+    
 ---
 
 ## 🚀 Getting Started
