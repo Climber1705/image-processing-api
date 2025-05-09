@@ -1,18 +1,32 @@
+
 # 🖼️ Image Processing API
 
-A **FastAPI-based** RESTful service for image management, processing, and object detection.
+A **FastAPI**-powered RESTful service designed for efficient image management, processing, and object detection. Ideal for handling image uploads, applying transformations, and detecting objects in images.
 
-## ✨ Features
+## ✨ Key Features
 
-- **🗂️ Image Management**: Upload, retrieve, list, and delete images  
-- **🛠️ Image Processing**: Apply filters, resize, rotate, and adjust images  
-- **🔍 Object Detection**: Detect objects with bounding boxes and confidence scores  
+- **🗂️ Image Management**:  
+  - Upload, retrieve, list, and delete images  
+  - Store and manage images in a scalable way
+
+- **🛠️ Image Processing**:  
+  - Apply various image filters (e.g., grayscale, sepia)  
+  - Resize, rotate with expanding. 
+  - Adjust brightness, contrast, and other image properties
+
+- **🔍 Object Detection**:  
+  - Detect objects within images using bounding boxes  
+  - Return confidence scores for each detected object
 
 ---
 
 ## 🚀 Getting Started
 
-### 1. Clone the Repository & Set Up Virtual Environment
+Follow these steps to set up and run the Image Processing API on your local machine:
+
+### 1. Clone the Repository & Set Up a Virtual Environment
+
+Clone the repository and create a virtual environment for isolating dependencies:
 
 ```bash
 git clone https://github.com/Climber1705/image-processing-api.git
@@ -23,37 +37,56 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 ### 2. Install Dependencies
 
+Install the required Python packages:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Configure Environment
+### 3. Configure the Environment
+
+Copy the environment variables template and modify it to match your local setup:
 
 ```bash
 cp .env.example .env
-# Edit .env to suit your local environment
+# Edit .env with the appropriate values (e.g., development, debug logging)
 ```
 
 ### 4. Run the API
+
+Start the FastAPI server:
 
 ```bash
 uvicorn main:app --reload
 ```
 
-Access the interactive API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+Once the server is running, access the interactive API documentation at:  
+[http://localhost:8000/docs](http://localhost:8000/docs)
 
 ---
 
-## 🛠️ Planned Improvements
+## 🛠️ Improvements
 
-- 🔒 **Authentication & Rate Limiting** – Secure the API with user auth and throttle requests  
-- ⚡ **Asynchronous Processing** – Improve performance for large or long-running tasks  
-- 🖼️ **Batch Operations** – Enable processing of multiple images in one request  
-- 🎨 **Extended Format & Filters** – Support more file types and advanced image effects  
-- 📄 **Pagination Support** – Efficiently browse large image collections  
+Stay tuned for these upcoming features:
+
+- 🔒 **Authentication**:  
+  Secure the API with user authentication.
+
+- ⚡ **Asynchronous Processing**:  
+  Improve API performance for handling large images or long-running tasks asynchronously.
+
+- 🖼️ **Batch Operations**:  
+  Enable batch processing for uploading and processing multiple images at once.
+
+- 🎨 **Extended Format & Filters**:  
+  Support more image file formats (e.g., WebP, BMP)
+
+- 📄 **Pagination Support**:  
+  Efficiently handle large image collections by paginating through the results.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the terms detailed [here](https://github.com/Climber1705/image-processing-api/blob/main/LICENSE).
+This project is licensed under the terms of the [MIT License](https://github.com/Climber1705/image-processing-api/blob/main/LICENSE).
+
