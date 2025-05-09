@@ -49,7 +49,7 @@ Copy the environment variables template and modify it to match your local setup:
 
 ```bash
 cp .env.example .env
-# Edit .env with the appropriate values (e.g., development, debug logging)
+# Edit .env with the appropriate values (e.g., development, logging type)
 ```
 
 ### 4. Run the API
