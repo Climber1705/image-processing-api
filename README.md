@@ -5,19 +5,23 @@ A **FastAPI**-powered RESTful service designed for efficient image management, p
 
 ## ✨ Key Features
 
-- **🗂️ Image Management**:  
+- **🗂️ Image Management**  
   - Upload, retrieve, list, and delete images  
   - Store and manage images in a scalable way
 
-- **🛠️ Image Processing**:  
+- **🛠️ Image Processing**  
   - Apply various image filters (e.g., grayscale, sepia)  
-  - Resize, rotate with expanding. 
-  - Adjust brightness, contrast, and other image properties
+  - Resize, rotate with expanding  
+  - Adjust brightness, contrast, and other image properties  
+  - Validate uploaded images for format and integrity
 
-- **🔍 Object Detection**:  
+- **🔍 Object Detection**  
   - Detect objects within images using bounding boxes  
   - Return confidence scores for each detected object
 
+- **🧹 Cleanup and Maintenance**  
+  - Automatically clean up `__pycache__` folders when the API is shut down
+  - 
 ---
 
 ## 🚀 Getting Started
