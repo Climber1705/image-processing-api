@@ -1,46 +1,53 @@
-# Image Processing API
+### 🖼️ Image Processing API
+A FastAPI-based RESTful service for image management, processing, and object detection.
 
-A FastAPI-based REST API for image CRUD operations, processing, and object detection.
+✨ Features
+🗂️ Image Management: Upload, retrieve, list, and delete images
 
-## Features
+🛠️ Image Processing: Apply filters, resize, rotate, and adjust images
 
-- **Image Management**: Upload, retrieve, list, and delete images
-- **Image Processing**: Apply filters, resize, rotate, and adjust images
-- **Object Detection**: Detect objects with bounding boxes and confidence scores
+🔍 Object Detection: Detect objects with bounding boxes and confidence scores
 
-## 🚀 Setup
-
-1. Clone repo and create virtual environment:
+🚀 Getting Started
+1. Clone the Repository & Set Up Virtual Environment
 ```bash
+Copy
+Edit
 git clone https://github.com/Climber1705/image-processing-api.git
 cd image-processing-api
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-Install dependencies:
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
-bash```
+3. Install Dependencies
+```bash
+Copy
+Edit
 pip install -r requirements.txt
-Configure environment:
-```
-bash```
+4. Configure Environment
+bash
+Copy
+Edit
 cp .env.example .env
-# Edit .env as needed
+# Edit .env to suit your local environment
 ```
-Run the API:
-
-bash```
+4. Run the API
+```bash
+Copy
+Edit
 uvicorn main:app --reload
-Access interactive docs at: http://localhost:8000/docs
 ```
-🔧 Improvements
-🔒 Add authentication and rate limiting for API security
+Access the interactive API docs: http://localhost:8000/docs
 
-⚡ Implement asynchronous processing for better performance
+🛠️ Planned Improvements
+🔒 Authentication & Rate Limiting – Secure the API with user auth and throttle requests
 
-🖼️ Support batch operations for multiple images
+⚡ Asynchronous Processing – Improve performance for large or long-running tasks
 
-🎨 Add more image formats and advanced filters
+🖼️ Batch Operations – Enable processing of multiple images in one request
 
-📄 Include pagination for large image collections
+🎨 Extended Format & Filters – Support more file types and advanced image effects
+
+📄 Pagination Support – Efficiently browse large image collections
 
 📄 License
+This project is licensed under the terms detailed here.
