@@ -32,7 +32,7 @@ Follow these steps to set up and run the Image Processing API on your local mach
 
 Clone the repository and create a virtual environment for isolating dependencies:
 
-```bash
+```
 git clone https://github.com/Climber1705/image-processing-api.git
 cd image-processing-api
 python -m venv venv
