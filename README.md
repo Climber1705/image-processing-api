@@ -79,7 +79,7 @@ Stay tuned for these upcoming features:
   Enable batch processing for uploading and processing multiple images at once.
 
 - 🎨 **Extended Format & Filters**:  
-  Support more image file formats (e.g., WebP, BMP)
+  Support more image file formats (e.g., WebP, BMP) and advanced image effects (e.g crop, watermarks)
 
 - 📄 **Pagination Support**:  
   Efficiently handle large image collections by paginating through the results.
