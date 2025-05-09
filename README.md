@@ -167,5 +167,5 @@ Stay tuned for these upcoming features:
 
 ## 📄 License
 
-This project is licensed under the terms of the [MIT License](https://github.com/Climber1705/image-processing-api/blob/main/LICENSE).
+This project is licensed under the terms of the [GNU License](https://github.com/Climber1705/image-processing-api/blob/main/LICENSE).
 
