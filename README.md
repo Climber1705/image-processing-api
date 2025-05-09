@@ -19,37 +19,41 @@ git clone https://github.com/Climber1705/image-processing-api.git
 cd image-processing-api
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
 
-3. Install Dependencies
+### 2. Install Dependencies
+
 ```bash
-Copy
-Edit
 pip install -r requirements.txt
-4. Configure Environment
-bash
-Copy
-Edit
+```
+
+### 3. Configure Environment
+
+```bash
 cp .env.example .env
 # Edit .env to suit your local environment
 ```
-4. Run the API
+
+### 4. Run the API
+
 ```bash
-Copy
-Edit
 uvicorn main:app --reload
 ```
-Access the interactive API docs: http://localhost:8000/docs
 
-🛠️ Planned Improvements
-🔒 Authentication & Rate Limiting – Secure the API with user auth and throttle requests
+Access the interactive API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-⚡ Asynchronous Processing – Improve performance for large or long-running tasks
+---
 
-🖼️ Batch Operations – Enable processing of multiple images in one request
+## 🛠️ Planned Improvements
 
-🎨 Extended Format & Filters – Support more file types and advanced image effects
+- 🔒 **Authentication & Rate Limiting** – Secure the API with user auth and throttle requests  
+- ⚡ **Asynchronous Processing** – Improve performance for large or long-running tasks  
+- 🖼️ **Batch Operations** – Enable processing of multiple images in one request  
+- 🎨 **Extended Format & Filters** – Support more file types and advanced image effects  
+- 📄 **Pagination Support** – Efficiently browse large image collections  
 
-📄 Pagination Support – Efficiently browse large image collections
+---
 
-📄 License
-This project is licensed under the terms detailed here.
+## 📄 License
+
+This project is licensed under the terms detailed [here](https://github.com/Climber1705/image-processing-api/blob/main/LICENSE).
