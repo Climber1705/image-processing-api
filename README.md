@@ -24,6 +24,51 @@ A **FastAPI**-powered RESTful service designed for efficient image management, p
     
 ---
 
+# AI Model: DETR (DEtection TRansformer)
+
+This project uses the **DEtection TRansformer (DETR)** model for object detection. DETR combines a Transformer architecture with a ResNet-50 backbone, enabling efficient and accurate object detection in images.
+
+## Key Components:
+- **Model**: `facebook/detr-resnet-50`
+  - A pre-trained object detection model that uses Transformers to understand the global context.
+  - Fine-tuned for detecting a wide variety of objects.
+
+## Initialisation:
+The processor and model are loaded as follows:
+
+```python
+from transformers import DetrImageProcessor, DetrForObjectDetection
+
+# Initialise the image processor and model
+self.processor = DetrImageProcessor.from_pretrained("facebook/detr-resnet-50")
+self.model = DetrForObjectDetection.from_pretrained("facebook/detr-resnet-50", ignore_mismatched_sizes=True)
+```
+
+- **`DetrImageProcessor`**: Pre-processes images for model input (resizing, normalisation, etc.).
+- **`DetrForObjectDetection`**: Performs object detection and outputs bounding boxes and class predictions.
+
+## Benefits:
+- **End-to-End Pipeline**: Simplifies detection without the need for separate components like region proposal networks.
+- **High Flexibility**: Can detect a wide variety of objects and is easily adaptable to custom datasets.
+- **Transformer-Based**: Captures global image context, improving detection accuracy.
+
+## Example Usage:
+
+```python
+# Process image and run object detection
+inputs = self.processor(images=image, return_tensors="pt")
+outputs = self.model(**inputs)
+
+# Post-process to extract detections
+results = self.processor.post_process_object_detection(outputs, target_sizes=[image.size[::-1]], threshold=0.9)[0]
+```
+
+## Model Information:
+- **Model Name**: `facebook/detr-resnet-50`
+- **Source**: [Hugging Face Model Hub](https://huggingface.co/facebook/detr-resnet-50)
+
+---
+
 ## 🚀 Getting Started
 
 Follow these steps to set up and run the Image Processing API on your local machine:
