@@ -24,16 +24,16 @@ A **FastAPI**-powered RESTful service designed for efficient image management, p
     
 ---
 
-# AI Model: DETR (DEtection TRansformer)
+## AI Model: DETR (DEtection TRansformer)
 
 This project uses the **DEtection TRansformer (DETR)** model for object detection. DETR combines a Transformer architecture with a ResNet-50 backbone, enabling efficient and accurate object detection in images.
 
-## Key Components:
+### Key Components:
 - **Model**: `facebook/detr-resnet-50`
   - A pre-trained object detection model that uses Transformers to understand the global context.
   - Fine-tuned for detecting a wide variety of objects.
 
-## Initialisation:
+### Initialisation:
 The processor and model are loaded as follows:
 
 ```python
@@ -47,12 +47,12 @@ self.model = DetrForObjectDetection.from_pretrained("facebook/detr-resnet-50", i
 - **`DetrImageProcessor`**: Pre-processes images for model input (resizing, normalisation, etc.).
 - **`DetrForObjectDetection`**: Performs object detection and outputs bounding boxes and class predictions.
 
-## Benefits:
+### Benefits:
 - **End-to-End Pipeline**: Simplifies detection without the need for separate components like region proposal networks.
 - **High Flexibility**: Can detect a wide variety of objects and is easily adaptable to custom datasets.
 - **Transformer-Based**: Captures global image context, improving detection accuracy.
 
-## Example Usage:
+### Example Usage:
 
 ```python
 # Process image and run object detection
@@ -63,7 +63,7 @@ outputs = self.model(**inputs)
 results = self.processor.post_process_object_detection(outputs, target_sizes=[image.size[::-1]], threshold=0.9)[0]
 ```
 
-## Model Information:
+### Model Information:
 - **Model Name**: `facebook/detr-resnet-50`
 - **Source**: [Hugging Face Model Hub](https://huggingface.co/facebook/detr-resnet-50)
 
