@@ -1,23 +1,25 @@
-### 🖼️ Image Processing API
-A FastAPI-based RESTful service for image management, processing, and object detection.
+# 🖼️ Image Processing API
 
-✨ Features
-🗂️ Image Management: Upload, retrieve, list, and delete images
+A **FastAPI-based** RESTful service for image management, processing, and object detection.
 
-🛠️ Image Processing: Apply filters, resize, rotate, and adjust images
+## ✨ Features
 
-🔍 Object Detection: Detect objects with bounding boxes and confidence scores
+- **🗂️ Image Management**: Upload, retrieve, list, and delete images  
+- **🛠️ Image Processing**: Apply filters, resize, rotate, and adjust images  
+- **🔍 Object Detection**: Detect objects with bounding boxes and confidence scores  
 
-🚀 Getting Started
-1. Clone the Repository & Set Up Virtual Environment
+---
+
+## 🚀 Getting Started
+
+### 1. Clone the Repository & Set Up Virtual Environment
+
 ```bash
-Copy
-Edit
 git clone https://github.com/Climber1705/image-processing-api.git
 cd image-processing-api
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+
 3. Install Dependencies
 ```bash
 Copy
