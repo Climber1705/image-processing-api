@@ -69,6 +69,81 @@ Once the server is running, access the interactive API documentation at:
 
 ---
 
+## 📂 **Repository Structure**
+Here’s a quick overview of the project file structure:
+```graphql
+image-processing-api/
+│
+├── app/
+│   ├── api/
+│   |   ├── routes/
+│   |   |   ├── __init__.py
+│   |   |   ├── detection_routes.py
+│   |   |   ├── editing_routes.py
+│   |   |   └── image_routes.py
+│   |   └── __init__.py          
+│   ├── core/
+│   |   ├── __init__.py
+│   |   ├── config.py
+│   |   ├── dependencies.py
+│   |   ├── logging_config.py
+│   |   └── rate_limiting.py      
+│   ├── managers/
+│   |   ├── __init__.py
+│   |   ├── detection_manager.py
+│   |   ├── edit_manager.py
+│   |   └── image_manager.py 
+|   ├── schemas/
+│   |   ├── detection/
+│   |   |   ├── __init__.py
+│   |   |   └── detection_responses.py
+│   |   ├── editing/
+│   |   |   ├── __init__.py
+│   |   |   ├── editing_requests.py
+│   |   |   └── editing_responses.py
+│   |   ├── image/
+│   |   |   ├── __init__.py
+│   |   |   ├── image_requests.py
+│   |   |   └── image_responses.py
+│   |   └── __init__.py 
+|   ├── services/
+│   |   ├── detection/
+│   |   |   ├── __init__.py
+│   |   |   └── detection_service.py
+│   |   ├── image/
+│   |   |   ├── storage/
+│   |   |   |   ├── __init__.py
+│   |   |   |   ├── base_storage.py
+│   |   |   |   └── local_storage.py
+│   |   |   ├── __init__.py
+│   |   |   ├── crud_operations.py
+│   |   |   ├── image_editor.py
+│   |   |   └── metadata_handler.py
+│   |   └── __init__.py   
+|   ├── utils/
+│   |   ├── file_operations/
+│   |   |   ├── __init__.py.py
+│   |   |   ├── directory_utils.py
+│   |   |   └── file_utils.py
+│   |   ├── system/
+│   |   |   ├── __init__.py.py
+│   |   |   ├── clean_up.py
+│   |   |   └── lifespan.py
+│   |   ├── validator/
+│   |   |   ├── __init__.py.py
+│   |   |   ├── base_validator.py
+│   |   |   └── simple_validator.py
+│   |   └── __init__.py   
+|   ├── __init__.py             
+│   └── main.py          
+│── logs/ 
+│   └── app.log    
+│── .env-example
+├── LICENSE      
+├── README.md             
+└── requirements.txt             
+```
+
 ## 🛠️ Improvements
 
 Stay tuned for these upcoming features:
