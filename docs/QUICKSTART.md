@@ -27,7 +27,7 @@ If you prefer to run locally without Docker:
 
 ```bash
 # Clone the repository
-git clone https://github.com/Climber1705/image-processing-api.git
+git clone https://github.com/thomas-trotter/image-processing-api.git
 cd image-processing-api
 
 # Create and activate virtual environment

@@ -16,7 +16,7 @@ Development guidelines and testing instructions for the Image Processing API.
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/Climber1705/image-processing-api.git
+   git clone https://github.com/thomas-trotter/image-processing-api.git
    cd image-processing-api
    ```
 

@@ -37,7 +37,7 @@ For Docker deployment:
 Clone the repository and create a virtual environment for isolating dependencies:
 
 ```bash
-git clone https://github.com/Climber1705/image-processing-api.git
+git clone https://github.com/thomas-trotter/image-processing-api.git
 cd image-processing-api
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
