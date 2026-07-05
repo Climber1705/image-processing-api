@@ -103,6 +103,8 @@ def mock_image_validator() -> Mock:
 @pytest.fixture
 def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mock) -> Mock:
     """Create a mock ImageService."""
+    from app.media.dtos import DeleteImageResultDTO, ImageDTO, OperationStatusDTO, SaveImageResultDTO
+
     mock = Mock(spec=ImageService)
     mock.local_storage = mock_local_storage
 
@@ -111,11 +113,26 @@ def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mo
 
     mock.get_image_path.side_effect = get_image_path_side_effect
 
-    def list_images_side_effect(
+    def build_image_dto(image_path: Path, folder: str) -> ImageDTO:
+        with Image.open(image_path) as img:
+            return ImageDTO(
+                id=image_path.stem,
+                filename=image_path.name,
+                format=img.format or "JPEG",
+                mode=img.mode,
+                width=img.width,
+                height=img.height,
+                size_bytes=os.path.getsize(image_path),
+                path=str(image_path),
+                url=None,
+                folder=folder,
+            )
+
+    def get_images_side_effect(
         folder: str = "uploaded",
         limit: int = 100,
         offset: int = 0,
-    ):
+    ) -> list[ImageDTO]:
         folder_map = {
             "uploaded": [temp_directories["uploaded"]],
             "edited": [temp_directories["edited"]],
@@ -128,70 +145,52 @@ def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mo
                 detail=f"Invalid folder: {folder}. Valid options: {list(folder_map.keys())}",
             )
 
-        results = []
+        results: list[ImageDTO] = []
         valid_extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp"}
 
         for directory in folder_map[folder]:
             if not directory.exists():
                 continue
-            search_path = directory
             image_files = [
-                f for f in search_path.rglob("*")
-                if f.suffix.lower() in valid_extensions and f.is_file()
+                path
+                for path in directory.rglob("*")
+                if path.suffix.lower() in valid_extensions and path.is_file()
             ]
-            for img_path in image_files[offset : offset + limit]:
+            for image_path in image_files[offset : offset + limit]:
                 try:
-                    with Image.open(img_path) as img:
-                        results.append({
-                            "filename": img_path.name,
-                            "format": img.format,
-                            "mode": img.mode,
-                            "width": img.width,
-                            "height": img.height,
-                            "size_bytes": os.path.getsize(img_path),
-                            "path": str(img_path),
-                            "url": None,
-                            "folder": directory.name,
-                        })
+                    results.append(build_image_dto(image_path, directory.name))
                 except (FileNotFoundError, OSError):
                     continue
         return results
 
-    mock.list_images.side_effect = list_images_side_effect
-    def get_image_by_id_side_effect(image_id: str, folder: str = "uploaded"):
-        image_path = temp_directories.get(folder, temp_directories["uploaded"]) / image_id
+    mock.get_images.side_effect = get_images_side_effect
+
+    def get_image_by_filename_side_effect(filename: str, folder: str = "uploaded") -> ImageDTO:
+        image_path = temp_directories.get(folder, temp_directories["uploaded"]) / filename
         if not image_path.exists():
-            raise HTTPException(status_code=404, detail=f"Image {image_id} not found in {folder}")
+            raise HTTPException(status_code=404, detail=f"Image {filename} not found in {folder}")
         try:
-            with Image.open(image_path) as img:
-                return {
-                    "filename": Path(image_path).name,
-                    "format": img.format,
-                    "mode": img.mode,
-                    "width": img.width,
-                    "height": img.height,
-                    "size_bytes": os.path.getsize(image_path) if os.path.exists(image_path) else 102400,
-                    "path": str(image_path),
-                    "url": None
-                }
+            return build_image_dto(image_path, folder)
         except (FileNotFoundError, OSError):
-            raise HTTPException(status_code=404, detail=f"Image {image_id} not found in {folder}")
-    
-    mock.get_image_by_id.side_effect = get_image_by_id_side_effect
-    def delete_image_side_effect(image_id: str, folder: str = "uploaded"):
-        image_path = temp_directories.get(folder, temp_directories["uploaded"]) / image_id
+            raise HTTPException(status_code=404, detail=f"Image {filename} not found in {folder}")
+
+    mock.get_image_by_filename.side_effect = get_image_by_filename_side_effect
+
+    def delete_image_side_effect(filename: str, folder: str = "uploaded") -> DeleteImageResultDTO:
+        image_path = temp_directories.get(folder, temp_directories["uploaded"]) / filename
         if not image_path.exists():
-            raise HTTPException(status_code=404, detail=f"Image {image_id} not found in {folder} folder")
-        if image_path.exists():
-            image_path.unlink()
-        return {
-            "status": "success",
-            "message": f"Image {image_id} deleted from {folder}",
-            "deleted_image": {}
-        }
+            raise HTTPException(status_code=404, detail=f"Image {filename} not found in {folder} folder")
+        deleted_image = build_image_dto(image_path, folder)
+        image_path.unlink()
+        return DeleteImageResultDTO(
+            status="success",
+            message=f"Image {filename} deleted from {folder}",
+            deleted_image=deleted_image,
+        )
+
     mock.delete_image.side_effect = delete_image_side_effect
 
-    def delete_all_images_side_effect(folder: str):
+    def delete_images_side_effect(folder: str) -> OperationStatusDTO:
         folder_map = {
             "uploaded": [temp_directories["uploaded"]],
             "edited": [temp_directories["edited"]],
@@ -206,61 +205,38 @@ def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mo
         for directory in folder_map[folder]:
             if not directory.exists():
                 continue
-            for img_path in directory.rglob("*"):
-                if img_path.suffix.lower() in valid_extensions and img_path.is_file():
-                    img_path.unlink()
+            for image_path in directory.rglob("*"):
+                if image_path.suffix.lower() in valid_extensions and image_path.is_file():
+                    image_path.unlink()
                     deleted_count += 1
-        return {
-            "status": "success",
-            "message": f"Deleted {deleted_count} images from {folder}",
-        }
+        return OperationStatusDTO(
+            status="success",
+            message=f"Deleted {deleted_count} images from {folder}",
+        )
 
-    mock.delete_all_images.side_effect = delete_all_images_side_effect
-    def move_image_side_effect(image_id: str, source_folder: str, target_folder: str):
-        source_path = temp_directories.get(source_folder, temp_directories["uploaded"]) / image_id
-        target_path = temp_directories.get(target_folder, temp_directories["edited"]) / image_id
-        
+    mock.delete_images.side_effect = delete_images_side_effect
+
+    def move_image_side_effect(filename: str, source_folder: str, target_folder: str) -> ImageDTO:
+        source_path = temp_directories.get(source_folder, temp_directories["uploaded"]) / filename
+        target_path = temp_directories.get(target_folder, temp_directories["edited"]) / filename
+
         if not source_path.exists():
-            raise HTTPException(status_code=404, detail=f"Image {image_id} not found in {source_folder}")
+            raise HTTPException(status_code=404, detail=f"Image {filename} not found in {source_folder}")
         if target_path.exists():
-            raise HTTPException(status_code=409, detail=f"Image {image_id} already exists in {target_folder}")
-        
-        shutil.move(str(source_path), str(target_path))
+            raise HTTPException(status_code=409, detail=f"Image {filename} already exists in {target_folder}")
 
-        try:
-            with Image.open(target_path) as img:
-                return {
-                    "filename": Path(target_path).name,
-                    "format": img.format,
-                    "mode": img.mode,
-                    "width": img.width,
-                    "height": img.height,
-                    "size_bytes": os.path.getsize(target_path) if os.path.exists(target_path) else 102400,
-                    "path": str(target_path),
-                    "url": None
-                }
-        except (FileNotFoundError, OSError):
-            return {
-                "filename": Path(target_path).name,
-                "format": "JPEG",
-                "mode": "RGB",
-                "width": 800,
-                "height": 600,
-                "size_bytes": 102400,
-                "path": str(target_path),
-                "url": None
-            }
-    
+        shutil.move(str(source_path), str(target_path))
+        return build_image_dto(target_path, target_folder)
+
     mock.move_image.side_effect = move_image_side_effect
-    from app.media.dtos import ImageDTO, SaveImageResultDTO
 
     mock.upload_image.side_effect = (
-        lambda file, filename=None, format="JPEG": SaveImageResultDTO(
+        lambda file, filename=None, output_format="JPEG": SaveImageResultDTO(
             path=str(temp_directories["uploaded"] / (filename or "test.jpg")),
             image=ImageDTO(
                 id="upload-id",
                 filename=filename or "test.jpg",
-                format=format,
+                format=output_format,
                 mode="RGB",
                 width=100,
                 height=100,

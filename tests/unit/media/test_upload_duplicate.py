@@ -5,6 +5,7 @@ Unit tests for duplicate upload detection.
 import pytest
 from io import BytesIO
 from unittest.mock import Mock
+
 from PIL import Image
 
 from app.media.dtos import ImageDTO
@@ -26,9 +27,9 @@ class TestDuplicateUpload:
         )
 
     def _upload_file(self, name: str = "photo.jpg"):
-        img = Image.new("RGB", (50, 50), color="red")
+        image = Image.new("RGB", (50, 50), color="red")
         buffer = BytesIO()
-        img.save(buffer, format="JPEG")
+        image.save(buffer, format="JPEG")
         buffer.seek(0)
         upload = Mock()
         upload.filename = name
@@ -36,29 +37,29 @@ class TestDuplicateUpload:
         return upload
 
     def test_upload_returns_existing_on_duplicate_content(self, image_service):
-        existing = Mock()
-        existing.id = "existing-id"
-        existing.filename = "original.jpg"
-        existing.path = "/tmp/original.jpg"
-        existing.format = "JPEG"
-        existing.mode = "RGB"
-        existing.width = 50
-        existing.height = 50
-        existing.size_bytes = 1024
-        existing.folder = "uploaded"
-        image_service.repository.get_by_content_hash.return_value = existing
+        existing_record = Mock()
+        existing_record.id = "existing-id"
+        existing_record.filename = "original.jpg"
+        existing_record.path = "/tmp/original.jpg"
+        existing_record.format = "JPEG"
+        existing_record.mode = "RGB"
+        existing_record.width = 50
+        existing_record.height = 50
+        existing_record.size_bytes = 1024
+        existing_record.folder = "uploaded"
+        image_service.repository.get_by_content_hash.return_value = existing_record
 
         result = image_service.upload_image(self._upload_file("copy.jpg"))
 
         assert result.path == "/tmp/original.jpg"
         assert result.image.filename == "original.jpg"
-        image_service.repository.generate_id.assert_not_called()
-        image_service.repository.create.assert_not_called()
+        image_service.repository.generate_image_id.assert_not_called()
+        image_service.repository.create_upload_record.assert_not_called()
 
     def test_upload_creates_new_image(self, image_service):
         image_service.repository.get_by_content_hash.return_value = None
-        image_service.repository.generate_id.return_value = "new-id"
-        image_service.repository.create.return_value = ImageDTO(
+        image_service.repository.generate_image_id.return_value = "new-id"
+        image_service.repository.create_upload_record.return_value = ImageDTO(
             id="new-id",
             filename="photo.jpg",
             format="JPEG",
@@ -72,5 +73,5 @@ class TestDuplicateUpload:
 
         result = image_service.upload_image(self._upload_file("photo.jpg"))
 
-        image_service.repository.create.assert_called_once()
+        image_service.repository.create_upload_record.assert_called_once()
         assert result.image.id == "new-id"

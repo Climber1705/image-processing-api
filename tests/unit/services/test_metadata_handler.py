@@ -45,7 +45,7 @@ class TestImageMetadata:
         with pytest.raises(HTTPException) as exc_info:
             get_image_dimensions(image_path)
 
-        assert exc_info.value.status_code == 500
+        assert exc_info.value.status_code == 404
 
     def test_get_metadata_success(self, temp_directories, sample_image_rgb):
         """Test successful metadata extraction."""

@@ -5,32 +5,19 @@ from sqlalchemy import delete, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models.image import ImageRecord
 from app.media.dtos import ImageDTO
 from app.media.errors import ImageCreationError
 from app.media.mappers import record_to_dto
 from app.media.metadata import get_image_metadata
+from app.models.image import ImageRecord
 
 
 class ImageRepository:
-    def __init__(self, session: Session):
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    def generate_id(self) -> str:
-        dialect = self.session.bind.dialect.name
-        if dialect == "postgresql":
-            return str(self.session.scalar(text("SELECT gen_random_uuid()")))
-        return str(uuid.uuid4())
-
-    def resolve_image_id(self, display_filename: str, folder: str) -> str:
-        existing = self.get_by_filename(display_filename, folder)
-        if existing is not None:
-            return existing.id
-        return self.generate_id()
-
-    def create(
+    def create_upload_record(
         self,
-        *,
         image_id: str,
         path: str | Path,
         folder: str,
@@ -60,7 +47,7 @@ class ImageRepository:
             self.session.rollback()
             raise ImageCreationError("Failed to create image record") from exc
 
-    def create_record(
+    def upsert_record(
         self,
         path: str | Path,
         folder: str,
@@ -71,19 +58,19 @@ class ImageRepository:
         path = Path(path)
         metadata = get_image_metadata(path)
 
-        existing = self.get_by_filename(display_filename, folder)
-        if existing is not None:
-            existing.path = str(path)
-            existing.format = metadata.format
-            existing.mode = metadata.mode
-            existing.width = metadata.width
-            existing.height = metadata.height
-            existing.size_bytes = metadata.size_bytes
+        existing_record = self.get_by_filename(display_filename, folder)
+        if existing_record is not None:
+            existing_record.path = str(path)
+            existing_record.format = metadata.format
+            existing_record.mode = metadata.mode
+            existing_record.width = metadata.width
+            existing_record.height = metadata.height
+            existing_record.size_bytes = metadata.size_bytes
             if content_hash is not None:
-                existing.content_hash = content_hash
+                existing_record.content_hash = content_hash
             self.session.commit()
-            self.session.refresh(existing)
-            return record_to_dto(existing)
+            self.session.refresh(existing_record)
+            return record_to_dto(existing_record)
 
         record = ImageRecord(
             id=image_id,
@@ -104,7 +91,7 @@ class ImageRepository:
 
     def create_from_path(self, path: str | Path, folder: str) -> ImageDTO:
         path = Path(path)
-        return self.create_record(
+        return self.upsert_record(
             path=path,
             folder=folder,
             display_filename=path.name,
@@ -143,22 +130,22 @@ class ImageRepository:
         limit: int = 100,
         offset: int = 0,
     ) -> list[ImageRecord]:
-        stmt = (
+        statement = (
             select(ImageRecord)
             .where(ImageRecord.folder.in_(folders))
             .order_by(ImageRecord.created_at.desc())
             .offset(offset)
             .limit(limit)
         )
-        return list(self.session.scalars(stmt).all())
+        return list(self.session.scalars(statement).all())
 
     def list_all_by_folders(self, folders: list[str]) -> list[ImageRecord]:
-        stmt = (
+        statement = (
             select(ImageRecord)
             .where(ImageRecord.folder.in_(folders))
             .order_by(ImageRecord.created_at.desc())
         )
-        return list(self.session.scalars(stmt).all())
+        return list(self.session.scalars(statement).all())
 
     def delete_by_filename(self, filename: str, folder: str) -> bool:
         record = self.get_by_filename(filename, folder)

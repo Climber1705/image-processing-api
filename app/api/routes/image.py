@@ -51,12 +51,18 @@ async def create_image(
     """Upload an image file with optional custom filename and output format."""
     try:
         await asyncio.to_thread(validator.validate, file)
-        file_data = await file.read()
+
         logger.info(
-            f"Uploading image: {file.filename} as {form.filename or file.filename} with format {form.format}"
+            "Uploading image: %s as %s with format %s",
+            file.filename,
+            form.filename or file.filename,
+            form.format,
         )
         result = await asyncio.to_thread(
-            image_service.upload_image, file_data, form.filename, form.format
+            image_service.upload_image,
+            file,
+            form.filename,
+            form.format,
         )
         logger.info(f"Image uploaded successfully: {result.path}")
         return to_upload_response(result)
@@ -107,7 +113,7 @@ async def get_image(
 ):
     """Get metadata for a single image."""
     logger.info(f"Fetching details for image: {filename} in folder: {query.folder}")
-    image = await asyncio.to_thread(image_service.get_image_by_id, filename, query.folder)
+    image = await asyncio.to_thread(image_service.get_image_by_filename, filename, query.folder)
     return to_detail_response(image)
 
 

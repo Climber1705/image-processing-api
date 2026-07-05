@@ -41,7 +41,7 @@ class ImageEditService:
     ) -> str:
         image_path = self.image_service.get_image_path(image_name, "uploaded")
         display_filename = self._build_display_filename(image_name, suffix)
-        storage_id = self.image_repository.resolve_image_id(display_filename, "edited")
+        storage_id = self.image_repository.get_or_create_image_id(display_filename, "edited")
 
         try:
             with Image.open(image_path) as img:
@@ -55,7 +55,7 @@ class ImageEditService:
                     storage_id=storage_id,
                     format=save_format,
                 )
-                self.image_repository.create_record(
+                self.image_repository.upsert_record(
                     path=output_path,
                     folder="edited",
                     display_filename=display_filename,

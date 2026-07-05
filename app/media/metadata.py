@@ -10,25 +10,40 @@ from app.media.dtos import FileMetadataDTO
 logger = get_logger("metadata")
 
 
+def get_image_dimensions(image_path: Path) -> tuple[int, int]:
+    try:
+        with Image.open(image_path) as image:
+            return image.width, image.height
+    except FileNotFoundError:
+        logger.error("Image not found: %s", image_path)
+        raise HTTPException(status_code=404, detail="Image not found")
+    except Exception as exc:
+        logger.error("Error getting image dimensions: %s", exc)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get image dimensions: {exc}",
+        )
+
+
 def get_image_metadata(image_path: Path) -> FileMetadataDTO:
     try:
-        with Image.open(image_path) as img:
+        with Image.open(image_path) as image:
             return FileMetadataDTO(
                 filename=Path(image_path).name,
-                format=img.format or "",
-                mode=img.mode,
-                width=img.width,
-                height=img.height,
+                format=image.format or "",
+                mode=image.mode,
+                width=image.width,
+                height=image.height,
                 size_bytes=os.path.getsize(image_path),
                 path=str(image_path),
                 url=None,
             )
     except FileNotFoundError:
-        logger.error(f"Image not found: {image_path}")
+        logger.error("Image not found: %s", image_path)
         raise HTTPException(status_code=404, detail="Image not found")
-    except Exception as e:
-        logger.error(f"Error getting image info: {e}")
+    except Exception as exc:
+        logger.error("Error getting image info: %s", exc)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to get image info: {str(e)}",
+            detail=f"Failed to get image info: {exc}",
         )
