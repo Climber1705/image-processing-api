@@ -1,9 +1,10 @@
-from pydantic import Field, ConfigDict
-from pydantic_settings import BaseSettings
+import os
+import logging
+from functools import lru_cache
 from pathlib import Path
 
-import logging
-import os
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -23,13 +24,18 @@ logger.addHandler(file_handler)
 
 
 class Settings(BaseSettings):
-    APP_NAME: str = "FastAPI App"
-    DEBUG: bool = True
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="allow",
+    )
+
     LOG_LEVEL: str = "DEBUG"
 
     UPLOADED_FOLDER: Path = Field(default_factory=lambda: Path("app/static/uploaded"))
     EDITED_FOLDER: Path = Field(default_factory=lambda: Path("app/static/edited"))
     DETECTED_FOLDER: Path = Field(default_factory=lambda: Path("app/static/detected"))
+
+    DATABASE_URL: str = "sqlite:///./app/data/images.db"
 
     MODEL_NAME: str = "facebook/detr-resnet-50"
     MODEL_REVISION: str | None = None
@@ -38,21 +44,32 @@ class Settings(BaseSettings):
     MAX_IMAGE_DIMENSION: int = 1333
     WARMUP_ON_STARTUP: bool = True
 
-    model_config = ConfigDict(
-        env_file=".env",
-        extra="allow",
-    )
+    @property
+    def directories(self) -> dict[str, Path]:
+        return {
+            "uploaded": self.UPLOADED_FOLDER,
+            "edited": self.EDITED_FOLDER,
+            "detected": self.DETECTED_FOLDER,
+        }
 
     def setup(self) -> None:
         for path in [self.UPLOADED_FOLDER, self.EDITED_FOLDER, self.DETECTED_FOLDER]:
             if not path.exists():
                 path.mkdir(parents=True, exist_ok=True)
-                logger.info(f"Created directory: {path}")
+                logger.info("Created directory: %s", path)
             else:
-                logger.debug(f"Directory already exists: {path}")
+                logger.debug("Directory already exists: %s", path)
+
+        if self.DATABASE_URL.startswith("sqlite:///./"):
+            db_path = Path(self.DATABASE_URL.removeprefix("sqlite:///./"))
+            db_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-settings = Settings()
-settings.setup()
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    settings = Settings()
+    settings.setup()
+    return settings
 
-default = settings
+
+settings = get_settings()
