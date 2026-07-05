@@ -10,10 +10,9 @@ from pathlib import Path
 # Allow running as `python scripts/benchmark_inference.py` from repo root.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from PIL import Image
-
 from app.core.config import settings
 from app.vision.inference.engine import InferenceEngine
+from PIL import Image
 
 
 def get_percentile(sorted_values: list[float], pct: float) -> float:
