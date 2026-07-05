@@ -1,5 +1,6 @@
 """Fixtures for real-model inference tests (slow; excluded from fast CI)."""
 
+from importlib.util import find_spec
 from unittest.mock import patch
 
 import pytest
