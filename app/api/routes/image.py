@@ -5,7 +5,7 @@ from app.core.rate_limiting import limiter
 from app.core.logging_config import get_logger
 from app.dependencies.services import get_image_service
 from app.dependencies.utils import get_simple_image_validator
-from app.media.image_service import ImageService
+from app.media.service import ImageService
 from app.media.schema import (
     ImageDetailResponse,
     ImageDimensionsResponse,

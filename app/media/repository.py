@@ -5,8 +5,8 @@ from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.db.models.image import ImageRecord
-from app.media.metadata_handler import ImageMetadataExtractor
+from app.models.image import ImageRecord
+from app.media.metadata import ImageMetadataExtractor
 
 
 class ImageRepository:

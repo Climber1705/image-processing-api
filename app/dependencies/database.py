@@ -1,10 +1,10 @@
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from app.db.repository import ImageRepository
-from app.db.session import get_db
-from app.media.metadata_handler import ImageMetadataExtractor
 
+from app.db.session import get_db
+from app.media.metadata import ImageMetadataExtractor
+from app.media.repository import ImageRepository
 
 def get_image_metadata_extractor() -> ImageMetadataExtractor:
     return ImageMetadataExtractor()

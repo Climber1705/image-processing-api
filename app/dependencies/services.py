@@ -5,11 +5,11 @@ from app.core.dependencies import get_directories
 from app.dependencies.utils import get_directory_manager, get_file_path_resolver
 from app.dependencies.database import get_image_repository
 from app.dependencies.storage import get_local_image_storage
-from app.db.repository import ImageRepository
+from app.media.repository import ImageRepository
 from app.editing.image_editor import ImageEditService
-from app.media.metadata_handler import ImageMetadataExtractor
+from app.media.metadata import ImageMetadataExtractor
 from app.media.crud_operations import ImageCRUDService
-from app.media.image_service import ImageService
+from app.media.service import ImageService
 from app.vision.detection_service import ObjectDetectionService
 from app.vision.inference.engine import InferenceEngine
 from app.storage.local_storage import LocalImageStorage

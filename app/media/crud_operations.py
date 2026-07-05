@@ -3,10 +3,10 @@ from typing import Any
 from pathlib import Path
 from fastapi import HTTPException
 
-from app.db.repository import ImageRepository
+from app.media.repository import ImageRepository
 from app.media.utils.directory_utils import DirectoryManager
 from app.media.utils.file_utils import FilePathResolver
-from app.media.metadata_handler import ImageMetadataExtractor
+from app.media.metadata import ImageMetadataExtractor
 from app.core.logging_config import get_logger
 from app.media.schema import ImageListItem
 
