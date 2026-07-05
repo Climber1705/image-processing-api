@@ -7,15 +7,13 @@ from app.core.rate_limiting import limiter
 from app.core.logging_config import get_logger
 from app.dependencies.services import get_image_service
 from app.dependencies.validation import get_simple_image_validator
-from app.media.requests import (
+from app.media.schema import (
     CreateImageForm,
     FolderFilterQuery,
     ImageFolderQuery,
     ListImagesQuery,
     MoveImageRequest,
     get_create_image_form,
-)
-from app.media.responses import (
     ImageDetailResponse,
     ImageListItem,
     ImageResponse,

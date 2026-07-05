@@ -1,4 +1,4 @@
-from app.media.responses import (
+from app.media.schema.responses import (
     ImageDetailResponse,
     ImageListItem,
     ImageMetadata,
