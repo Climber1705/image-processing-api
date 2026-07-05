@@ -1,7 +1,7 @@
 import os
 import shutil
-from typing import BinaryIO
 from pathlib import Path
+from typing import BinaryIO
 from PIL import Image, UnidentifiedImageError
 
 from app.core.logging_config import get_logger
@@ -34,7 +34,6 @@ class LocalImageStorage(BaseImageStorage):
         folder: str,
         storage_id: str,
         format: str = "JPEG",
-        *,
         display_filename: str | None = None,
     ) -> str:
         validated_format = validate_image_format(format, self._format_extensions)
