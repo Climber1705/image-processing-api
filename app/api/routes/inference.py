@@ -10,10 +10,29 @@ from app.vision.api.mappers import (
     to_inference_detect_response,
     to_inference_visualize_response,
 )
-from app.vision.inference.engine import InferenceEngine
 from app.vision.service import InferenceService
 
 router = APIRouter(prefix="/v1/inference", tags=["Inference"])
+
+
+async def _run_detect(
+    file: UploadFile | None,
+    image_name: str | None,
+    folder: str,
+    service: InferenceService,
+    *,
+    visualize: bool,
+    persist: bool = False,
+):
+    image_bytes, source_filename = await resolve_image_bytes(file, image_name, folder, service)
+    return await run_inference(
+        lambda: service.detect(
+            image_bytes,
+            visualize=visualize,
+            persist=persist,
+            source_filename=source_filename,
+        ),
+    )
 
 
 @router.post("/detect", response_model=InferenceDetectResponse)
@@ -26,10 +45,7 @@ async def detect(
     service: InferenceService = Depends(get_inference_service),
 ):
     """Run object detection on an uploaded image or a stored image by reference."""
-    image_bytes, source_filename = await resolve_image_bytes(file, image_name, folder, service)
-    result = await run_inference(
-        lambda: service.detect(image_bytes, source_filename=source_filename),
-    )
+    result = await _run_detect(file, image_name, folder, service, visualize=False)
     return to_inference_detect_response(result)
 
 
@@ -44,21 +60,15 @@ async def detect_with_visualization(
     service: InferenceService = Depends(get_inference_service),
 ):
     """Run object detection and return bounding-box visualization."""
-    image_bytes, source_filename = await resolve_image_bytes(file, image_name, folder, service)
-    result = await run_inference(
-        lambda: service.detect(
-            image_bytes,
-            visualize=True,
-            persist=persist,
-            source_filename=source_filename,
-        ),
-    )
+    result = await _run_detect(file, image_name, folder, service, visualize=True, persist=persist)
     return to_inference_visualize_response(result)
 
 
 @router.get("/models", response_model=ModelInfoResponse)
 @limiter.limit("30/minute")
-async def list_models(request: Request):
+async def list_models(
+    request: Request,
+    service: InferenceService = Depends(get_inference_service),
+):
     """Return metadata for the loaded inference model."""
-    engine: InferenceEngine = request.app.state.inference_engine
-    return from_engine_metadata(engine)
+    return from_engine_metadata(service.engine)

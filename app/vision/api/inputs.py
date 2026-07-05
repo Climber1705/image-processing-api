@@ -1,9 +1,10 @@
 import asyncio
 from pathlib import Path
 
-from fastapi import HTTPException, UploadFile, status
+from fastapi import UploadFile
 
 from app.validation.validator import validate_upload
+from app.vision.domain.errors import InvalidInputError
 from app.vision.service import InferenceService
 
 
@@ -20,9 +21,7 @@ async def resolve_image_bytes(
 
     if image_name is not None:
         image_path = service.image_service.get_image_path(image_name, folder)
-        return Path(image_path).read_bytes(), image_name
+        content = await asyncio.to_thread(Path(image_path).read_bytes)
+        return content, image_name
 
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail="Provide a multipart file or image_name query parameter.",
-    )
+    raise InvalidInputError("Provide a multipart file or image_name query parameter.")

@@ -1,6 +1,6 @@
 import torch
 
-from app.vision.inference.mappers import to_detections_from_raw
+from app.vision.inference.mappers import to_detection_dtos
 
 
 def postprocess(
@@ -15,7 +15,7 @@ def postprocess(
         outputs, target_sizes=target_sizes, threshold=confidence_threshold
     )[0]
 
-    return to_detections_from_raw(
+    return to_detection_dtos(
         results["scores"],
         results["labels"],
         results["boxes"],

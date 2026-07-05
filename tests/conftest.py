@@ -536,6 +536,19 @@ def format_extensions() -> Dict[str, str]:
     }
 
 
+@pytest.fixture
+def test_settings(temp_directories, format_extensions):
+    """Settings scoped to temp directories for unit tests."""
+    from app.core.config import Settings
+
+    return Settings(
+        UPLOADED_FOLDER=temp_directories["uploaded"],
+        EDITED_FOLDER=temp_directories["edited"],
+        DETECTED_FOLDER=temp_directories["detected"],
+        FORMAT_EXTENSIONS=format_extensions,
+    )
+
+
 def pytest_configure(config):
     """Register custom markers."""
     config.addinivalue_line("markers", "unit: Unit tests for individual components")

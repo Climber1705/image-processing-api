@@ -28,15 +28,15 @@ class TestImageService:
         return Mock()
 
     @pytest.fixture
-    def image_service(self, temp_directories, mock_repository, format_extensions):
+    def image_service(self, temp_directories, mock_repository, test_settings, format_extensions):
         storage = LocalImageStorage(
             directories=temp_directories,
             format_extensions=format_extensions,
         )
         return ImageService(
+            settings=test_settings,
             repository=mock_repository,
             storage=storage,
-            format_extensions=format_extensions,
         )
 
     def _make_record(self, filename: str, folder: str, path: Path, width: int = 100, height: int = 100):
@@ -58,14 +58,14 @@ class TestImageService:
 
     def test_get_images_from_db(self, image_service, mock_repository):
         record = self._make_record("listed.jpg", "uploaded", Path("/tmp/listed.jpg"))
-        mock_repository.list_by_folder.return_value = [record]
+        mock_repository.get_by_folder.return_value = [record]
 
         results = image_service.get_images("uploaded", limit=10, offset=0)
 
         assert len(results) == 1
         assert isinstance(results[0], ImageDTO)
         assert results[0].filename == "listed.jpg"
-        mock_repository.list_by_folder.assert_called_once_with(
+        mock_repository.get_by_folder.assert_called_once_with(
             folders=["uploaded"], limit=10, offset=0
         )
 
@@ -74,12 +74,12 @@ class TestImageService:
             self._make_record("a.jpg", "uploaded", Path("/tmp/a.jpg")),
             self._make_record("b.jpg", "edited", Path("/tmp/b.jpg")),
         ]
-        mock_repository.list_by_folder.return_value = records
+        mock_repository.get_by_folder.return_value = records
 
         results = image_service.get_images("all", limit=100, offset=0)
 
         assert len(results) == 2
-        mock_repository.list_by_folder.assert_called_once_with(
+        mock_repository.get_by_folder.assert_called_once_with(
             folders=["uploaded", "edited", "detected"], limit=100, offset=0
         )
 
@@ -135,7 +135,7 @@ class TestImageService:
             Image.new("RGB", (100, 100), color="blue").save(image_path, format="JPEG")
             records.append(self._make_record(f"test_{index}.jpg", "uploaded", image_path))
 
-        mock_repository.list_all_by_folders.return_value = records
+        mock_repository.get_all_by_folders.return_value = records
 
         result = image_service.delete_images("uploaded")
 
@@ -151,7 +151,7 @@ class TestImageService:
                 Image.new("RGB", (100, 100), color="green").save(image_path, format="JPEG")
                 records.append(self._make_record(f"test_{index}.jpg", folder, image_path))
 
-        mock_repository.list_all_by_folders.return_value = records
+        mock_repository.get_all_by_folders.return_value = records
 
         result = image_service.delete_images("all")
 
@@ -179,7 +179,7 @@ class TestImageService:
             folder="edited",
         )
         mock_repository.get_by_filename.return_value = record
-        mock_repository.update_location.return_value = updated_image
+        mock_repository.update.return_value = updated_image
 
         result = image_service.move_image("db_move.jpg", "uploaded", "edited")
 

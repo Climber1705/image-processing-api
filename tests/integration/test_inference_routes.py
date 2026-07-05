@@ -12,7 +12,8 @@ from app.dependencies.repositories import get_image_repository
 from app.dependencies.services import get_image_service, get_inference_service
 from app.dependencies.storage import get_local_image_storage
 from app.main import app
-from app.vision.inference.schemas import Detection, DetectionResult
+from app.vision.domain.dtos import DetectionDTO
+from app.vision.inference.schemas import DetectionResult
 from app.vision.service import InferenceService
 from fastapi.testclient import TestClient
 from unittest.mock import patch
@@ -57,7 +58,7 @@ def inference_client(
 
     sample_result = DetectionResult(
         detections=[
-            Detection(label="person", confidence=0.95, box=[100.0, 100.0, 200.0, 300.0]),
+            DetectionDTO(label="person", confidence=0.95, box=[100.0, 100.0, 200.0, 300.0]),
         ],
         model_name="facebook/detr-resnet-50",
         model_version=None,

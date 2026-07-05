@@ -53,7 +53,8 @@ For detailed installation instructions, see the [Installation Guide](INSTALLATIO
 Check the health endpoint:
 
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8000/health/live
+curl http://localhost:8000/health/ready
 ```
 
 Or visit [http://localhost:8000](http://localhost:8000) in your browser.
@@ -79,13 +80,20 @@ curl -X POST "http://localhost:8000/images/my_photo.jpg/edits/resize?width=800&h
 
 ### 4. Detect Objects
 
-Detect objects in an image:
+Detect objects in an uploaded image:
 
 ```bash
-curl -X POST "http://localhost:8000/images/my_photo.jpg/detections/bounding-boxes"
+curl -X POST "http://localhost:8000/v1/inference/detect" \
+  -F "file=@photo.jpg"
 ```
 
-**Note**: The first detection request will take 1-3 minutes as the DETR model downloads. Subsequent requests will be faster.
+Or reference a stored image:
+
+```bash
+curl -X POST "http://localhost:8000/v1/inference/detect?image_name=my_photo.jpg&folder=uploaded"
+```
+
+**Note**: The DETR model loads at startup. First boot may take 1–3 minutes while weights download from Hugging Face.
 
 ## Interactive API Documentation
 

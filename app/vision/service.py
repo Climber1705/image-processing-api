@@ -2,21 +2,17 @@ import base64
 from io import BytesIO
 from pathlib import Path
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image
 
 from app.core.config import settings
 from app.core.logging_config import get_logger
 from app.media.domain.enums import ImageFolder
-from app.media.domain.errors import ImageNotFoundError
 from app.media.repository import ImageRepository
 from app.media.service import ImageService
 from app.storage.base_storage import BaseImageStorage
 from app.vision.domain.dtos import DetectResponseDTO
-from app.vision.domain.errors import (
-    CorruptImageError,
-    InferenceError,
-    ModelNotReadyError,
-)
+from app.vision.domain.errors import InferenceError, ModelNotReadyError
+from app.vision.image_loader import load_from_bytes, load_from_path
 from app.vision.inference.engine import InferenceEngine
 from app.vision.inference.mappers import to_detect_response_dto
 from app.vision.inference.schemas import DetectionResult
@@ -47,50 +43,6 @@ class InferenceService:
     def _ensure_ready(self) -> None:
         if not self.engine.is_ready:
             raise ModelNotReadyError("Inference engine is not ready")
-
-    def _load_and_validate_image(self, image_path: str) -> Image.Image:
-        path = Path(image_path)
-        if not path.exists():
-            raise ImageNotFoundError(f"Image {path.name} not found")
-
-        if path.stat().st_size == 0:
-            raise CorruptImageError(f"Image file is empty: {path.name}")
-
-        try:
-            with Image.open(path) as img:
-                img.verify()
-        except (UnidentifiedImageError, OSError, SyntaxError) as exc:
-            raise CorruptImageError(f"Image file is corrupt or unreadable: {path.name}") from exc
-
-        try:
-            with Image.open(path) as img:
-                if img.width <= 0 or img.height <= 0:
-                    raise CorruptImageError(f"Image has invalid dimensions: {path.name}")
-                return img.convert("RGB")
-        except CorruptImageError:
-            raise
-        except (UnidentifiedImageError, OSError, ValueError) as exc:
-            raise CorruptImageError(f"Image file is corrupt or unreadable: {path.name}") from exc
-
-    def _load_and_validate_from_bytes(self, data: bytes, label: str) -> Image.Image:
-        if not data:
-            raise CorruptImageError(f"Image file is empty: {label}")
-
-        try:
-            with Image.open(BytesIO(data)) as img:
-                img.verify()
-        except (UnidentifiedImageError, OSError, SyntaxError) as exc:
-            raise CorruptImageError(f"Image file is corrupt or unreadable: {label}") from exc
-
-        try:
-            with Image.open(BytesIO(data)) as img:
-                if img.width <= 0 or img.height <= 0:
-                    raise CorruptImageError(f"Image has invalid dimensions: {label}")
-                return img.convert("RGB")
-        except CorruptImageError:
-            raise
-        except (UnidentifiedImageError, OSError, ValueError) as exc:
-            raise CorruptImageError(f"Image file is corrupt or unreadable: {label}") from exc
 
     def _predict(self, image: Image.Image, source_label: str = "image") -> DetectionResult:
         self._ensure_ready()
@@ -143,13 +95,8 @@ class InferenceService:
         persist: bool = False,
         source_filename: str = "image.jpg",
     ) -> DetectResponseDTO:
-        pil = self._load_and_validate_from_bytes(image, source_filename)
-        return self.detect_from_image(
-            pil,
-            visualize=visualize,
-            persist=persist,
-            source_filename=source_filename,
-        )
+        pil = load_from_bytes(image, source_filename)
+        return self._run_detection(pil, visualize, persist, source_filename)
 
     def detect_from_path(
         self,
@@ -159,21 +106,16 @@ class InferenceService:
         persist: bool = False,
         source_filename: str | None = None,
     ) -> DetectResponseDTO:
-        pil = self._load_and_validate_image(image_path)
+        pil = load_from_path(Path(image_path))
         filename = source_filename or Path(image_path).name
-        return self.detect_from_image(
-            pil,
-            visualize=visualize,
-            persist=persist,
-            source_filename=filename,
-        )
+        return self._run_detection(pil, visualize, persist, filename)
 
-    def detect_from_image(
+    def _run_detection(
         self,
         image: Image.Image,
-        visualize: bool = False,
-        persist: bool = False,
-        source_filename: str = "image.jpg",
+        visualize: bool,
+        persist: bool,
+        source_filename: str,
     ) -> DetectResponseDTO:
         result = self._predict(image, source_label=source_filename)
 
@@ -181,16 +123,11 @@ class InferenceService:
             return to_detect_response_dto(result)
 
         annotated = draw_bounding_boxes(image, result.detections)
-        image_path: str | None = None
-        annotated_image_base64: str | None = None
-
-        if persist:
-            image_path = self._persist_annotation(annotated, source_filename)
-        else:
-            annotated_image_base64 = self._encode_image_base64(annotated)
+        image_path = self._persist_annotation(annotated, source_filename) if persist else None
+        encoded = None if persist else self._encode_image_base64(annotated)
 
         return to_detect_response_dto(
             result,
             image_path=image_path,
-            annotated_image_base64=annotated_image_base64,
+            annotated_image_base64=encoded,
         )

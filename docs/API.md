@@ -27,7 +27,8 @@ The Swagger UI provides:
 | Method | Endpoint | Description | Rate Limit |
 |--------|----------|-------------|------------|
 | GET | `/` | Root endpoint with welcome message | None |
-| GET | `/health` | Health check endpoint for monitoring | None |
+| GET | `/health/live` | Liveness probe | None |
+| GET | `/health/ready` | Readiness probe (model + storage) | None |
 
 ### Image Management (`/images`)
 
@@ -53,12 +54,15 @@ The Swagger UI provides:
 | POST | `/images/{image_name}/edits/brightness` | Adjust brightness | 20/min |
 | POST | `/images/{image_name}/edits/contrast` | Adjust contrast | 20/min |
 
-### Object Detection (`/images/{image_name}/detections`)
+### Object Detection (`/v1/inference`)
 
 | Method | Endpoint | Description | Rate Limit |
 |--------|----------|-------------|------------|
-| POST | `/images/{image_name}/detections/bounding-boxes` | Detect objects with visualization | 5/min |
-| GET | `/images/{image_name}/detections` | Get detection metadata | 10/min |
+| POST | `/v1/inference/detect` | Detect objects (metadata only) | 10/min |
+| POST | `/v1/inference/detect/visualize` | Detect with bounding-box visualization | 5/min |
+| GET | `/v1/inference/models` | Model metadata and readiness | 30/min |
+
+Both detect endpoints accept either a **multipart file upload** or a **stored image reference** via query params (`image_name`, `folder`).
 
 ## Example Requests
 
@@ -169,34 +173,52 @@ curl -X POST "http://localhost:8000/images/photo.jpg/edits/contrast?factor=1.2"
 **Query Parameters:**
 - `factor` (required): Contrast factor (1.0 = no change, >1.0 = more contrast)
 
-### Detect Objects
+### Detect Objects (multipart upload)
 
 ```bash
-curl -X POST "http://localhost:8000/images/photo.jpg/detections/bounding-boxes"
+curl -X POST "http://localhost:8000/v1/inference/detect" \
+  -F "file=@photo.jpg"
 ```
 
 **Response:**
 ```json
 {
-  "image_name": "photo.jpg",
+  "message": "Detection completed successfully",
   "detections": [
     {
       "label": "person",
       "confidence": 0.95,
-      "bbox": [100, 150, 200, 300]
+      "box": [100.0, 150.0, 200.0, 300.0]
     }
   ],
-  "output_image": "detected_photo.jpg"
+  "model_name": "facebook/detr-resnet-50",
+  "model_version": null,
+  "detection_count": 1
 }
 ```
 
-**Note**: The first detection request will take 1-3 minutes as the DETR model downloads. Subsequent requests will be faster.
-
-### Get Detection Metadata
+### Detect Objects (stored image reference)
 
 ```bash
-curl http://localhost:8000/imagesdetect/detected_objects/?image_name=photo.jpg
+curl -X POST "http://localhost:8000/v1/inference/detect?image_name=photo.jpg&folder=uploaded"
 ```
+
+### Detect with Visualization
+
+```bash
+curl -X POST "http://localhost:8000/v1/inference/detect/visualize?persist=false" \
+  -F "file=@photo.jpg"
+```
+
+Returns `annotated_image_base64` when `persist=false`. Set `persist=true` to save to the `detected` folder.
+
+### List Model Info
+
+```bash
+curl http://localhost:8000/v1/inference/models
+```
+
+**Note**: The model loads at startup. First boot may take 1–3 minutes while DETR weights download from Hugging Face.
 
 ### Move Image Between Folders
 
@@ -227,7 +249,7 @@ The API implements rate limiting to ensure fair usage and prevent abuse. Rate li
 Rate limits are specified in the endpoint tables above. Common limits:
 - Image upload: 10 requests per minute
 - Image listing: 60 requests per minute
-- Object detection: 5 requests per minute
+- Object detection: 5–10 requests per minute depending on endpoint
 - Image editing: 10-20 requests per minute depending on operation
 
 ## Error Responses
