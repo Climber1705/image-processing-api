@@ -5,10 +5,10 @@ from sqlalchemy import delete, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.media.dtos import ImageDTO
-from app.media.errors import ImageCreationError
-from app.media.mappers import record_to_dto
-from app.media.metadata import get_image_metadata
+from app.media.domain.dtos import ImageDTO
+from app.media.domain.errors import ImageCreationError
+from app.media.utils.mappers import record_to_dto
+from app.media.utils.metadata import get_image_metadata
 from app.models.image import ImageRecord
 
 

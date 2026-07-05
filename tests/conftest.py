@@ -103,7 +103,7 @@ def mock_image_validator() -> Mock:
 @pytest.fixture
 def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mock) -> Mock:
     """Create a mock ImageService."""
-    from app.media.dtos import DeleteImageResultDTO, ImageDTO, OperationStatusDTO, SaveImageResultDTO
+    from app.media.domain.dtos import DeleteImageResultDTO, ImageDTO, OperationStatusDTO, SaveImageResultDTO
 
     mock = Mock(spec=ImageService)
     mock.local_storage = mock_local_storage

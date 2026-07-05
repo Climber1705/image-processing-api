@@ -8,15 +8,15 @@ from unittest.mock import Mock
 
 from PIL import Image
 
-from app.media.dtos import ImageDTO
-from app.media.enums import ImageFolder
-from app.media.errors import (
+from app.media.domain.dtos import ImageDTO
+from app.media.domain.enums import ImageFolder
+from app.media.domain.errors import (
     ImageConflictError,
     ImageNotFoundError,
     InvalidFolderError,
     InvalidMoveError,
 )
-from app.media.mappers import record_to_dto
+from app.media.utils.mappers import record_to_dto
 from app.media.service import ImageService
 from app.storage.local_storage import LocalImageStorage
 

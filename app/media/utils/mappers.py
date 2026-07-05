@@ -1,11 +1,11 @@
-from app.media.schema.responses import (
+from app.media.api.responses import (
     ImageDetailResponse,
     ImageListItem,
     ImageMetadata,
     ImageResponse,
     StatusResponse,
 )
-from app.media.dtos import (
+from app.media.domain.dtos import (
     DeleteImageResultDTO,
     ImageDTO,
     OperationStatusDTO,

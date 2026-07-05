@@ -6,7 +6,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.api.routes import router
 from app.core.lifespan import lifespan
 from app.core.rate_limiting import limiter
-from app.media.handlers import register_media_exception_handlers
+from app.media.api.handlers import register_media_exception_handlers
 
 description = """
 Upload, manage, and process images.

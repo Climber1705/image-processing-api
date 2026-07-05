@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from starlette import status
 
 from app.core.logging_config import get_logger
-from app.media.errors import (
+from app.media.domain.errors import (
     DuplicateImageError,
     ImageConflictError,
     ImageCreationError,

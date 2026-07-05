@@ -6,7 +6,7 @@ import pytest
 from io import BytesIO
 from pathlib import Path
 
-from app.media.hash import compute_checksum, compute_file_checksum
+from app.media.utils.hash import compute_checksum, compute_file_checksum
 
 
 @pytest.mark.unit

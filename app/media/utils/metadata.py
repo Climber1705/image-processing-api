@@ -5,7 +5,7 @@ from PIL import Image
 from fastapi import HTTPException
 
 from app.core.logging_config import get_logger
-from app.media.dtos import FileMetadataDTO
+from app.media.domain.dtos import FileMetadataDTO
 
 logger = get_logger("metadata")
 

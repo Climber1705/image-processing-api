@@ -6,7 +6,7 @@ from functools import lru_cache
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.media.enums import ImageFolder
+from app.media.domain.enums import ImageFolder
 
 LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)

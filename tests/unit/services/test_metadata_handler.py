@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import HTTPException
 from PIL import Image
 
-from app.media.metadata import get_image_dimensions, get_image_metadata
+from app.media.utils.metadata import get_image_dimensions, get_image_metadata
 
 
 @pytest.mark.unit

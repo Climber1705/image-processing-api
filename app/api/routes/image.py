@@ -7,19 +7,19 @@ from app.core.rate_limiting import limiter
 from app.core.logging_config import get_logger
 from app.dependencies.services import get_image_service
 from app.dependencies.validation import get_simple_image_validator
-from app.media.schema import (
+from app.media.api import (
     CreateImageForm,
     FolderFilterQuery,
-    ImageFolderQuery,
-    ListImagesQuery,
-    MoveImageRequest,
-    get_create_image_form,
     ImageDetailResponse,
+    ImageFolderQuery,
     ImageListItem,
     ImageResponse,
+    ListImagesQuery,
+    MoveImageRequest,
     StatusResponse,
+    get_create_image_form,
 )
-from app.media.mappers import (
+from app.media.utils.mappers import (
     to_delete_status_response,
     to_detail_response,
     to_list_item,
@@ -27,7 +27,7 @@ from app.media.mappers import (
     to_upload_response,
 )
 from app.media.service import ImageService
-from app.media.errors import MediaDomainError
+from app.media.domain.errors import MediaDomainError
 from app.validation.simple_validator import SimpleImageValidator
 
 logger = get_logger("image_routes")

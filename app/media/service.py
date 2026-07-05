@@ -3,14 +3,14 @@ from pathlib import Path
 from fastapi import UploadFile
 
 from app.core.logging_config import get_logger
-from app.media.dtos import (
+from app.media.domain.dtos import (
     DeleteImageResultDTO,
     ImageDTO,
     OperationStatusDTO,
     SaveImageResultDTO,
 )
-from app.media.enums import FolderFilter, ImageFolder
-from app.media.errors import (
+from app.media.domain.enums import FolderFilter, ImageFolder
+from app.media.domain.errors import (
     ImageConflictError,
     ImageCreationError,
     ImageNotFoundError,
@@ -19,9 +19,9 @@ from app.media.errors import (
     InvalidFolderError,
     InvalidMoveError,
 )
-from app.media.filename import get_display_filename
-from app.media.hash import compute_checksum
-from app.media.mappers import record_to_dto
+from app.media.utils.filename import get_display_filename
+from app.media.utils.hash import compute_checksum
+from app.media.utils.mappers import record_to_dto
 from app.media.repository import ImageRepository
 from app.storage.base_storage import BaseImageStorage
 from app.validation.simple_validator import SimpleImageValidator
