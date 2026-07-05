@@ -1,9 +1,20 @@
+import os
 from pathlib import Path
+from collections.abc import Iterable
 
 from app.core.logging_config import get_logger
 from app.storage.errors import InvalidStorageFolderError, StorageOperationError
 
 logger = get_logger("directories")
+
+
+def storage_dirs_writable(directories: Iterable[Path]) -> bool:
+    for path in directories:
+        if not path.exists() or not path.is_dir():
+            return False
+        if not os.access(path, os.W_OK):
+            return False
+    return True
 
 
 class DirectoryManager:
