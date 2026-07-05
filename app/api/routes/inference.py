@@ -1,10 +1,13 @@
 from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
 
 from app.core.rate_limiting import limiter
-from app.dependencies.inference import run_inference
 from app.dependencies.services import get_inference_service
-from app.vision.api import InferenceDetectResponse, InferenceDetectVisualizeResponse, ModelInfoResponse
-from app.vision.api.inputs import resolve_image_bytes
+from app.vision.api import (
+    InferenceDetectResponse,
+    InferenceDetectVisualizeResponse,
+    ModelInfoResponse,
+)
+from app.vision.api.detect import run_detect
 from app.vision.api.mappers import (
     from_engine_metadata,
     to_inference_detect_response,
@@ -13,26 +16,6 @@ from app.vision.api.mappers import (
 from app.vision.service import InferenceService
 
 router = APIRouter(prefix="/v1/inference", tags=["Inference"])
-
-
-async def _run_detect(
-    file: UploadFile | None,
-    image_name: str | None,
-    folder: str,
-    service: InferenceService,
-    *,
-    visualize: bool,
-    persist: bool = False,
-):
-    image_bytes, source_filename = await resolve_image_bytes(file, image_name, folder, service)
-    return await run_inference(
-        lambda: service.detect(
-            image_bytes,
-            visualize=visualize,
-            persist=persist,
-            source_filename=source_filename,
-        ),
-    )
 
 
 @router.post("/detect", response_model=InferenceDetectResponse)
@@ -45,7 +28,7 @@ async def detect(
     service: InferenceService = Depends(get_inference_service),
 ):
     """Run object detection on an uploaded image or a stored image by reference."""
-    result = await _run_detect(file, image_name, folder, service, visualize=False)
+    result = await run_detect(file, image_name, folder, service, visualize=False)
     return to_inference_detect_response(result)
 
 
@@ -60,7 +43,7 @@ async def detect_with_visualization(
     service: InferenceService = Depends(get_inference_service),
 ):
     """Run object detection and return bounding-box visualization."""
-    result = await _run_detect(file, image_name, folder, service, visualize=True, persist=persist)
+    result = await run_detect(file, image_name, folder, service, visualize=True, persist=persist)
     return to_inference_visualize_response(result)
 
 
