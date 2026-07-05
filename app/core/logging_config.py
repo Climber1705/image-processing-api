@@ -1,9 +1,10 @@
-from app.core.config import settings
-from typing import Optional
-
-import logging
-from logging.handlers import RotatingFileHandler
 import os
+import logging
+from typing import Optional
+from logging.handlers import RotatingFileHandler
+
+from app.core.config import settings
+
 
 LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)
