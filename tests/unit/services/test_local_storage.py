@@ -2,6 +2,8 @@
 Unit tests for LocalImageStorage service.
 """
 
+import re
+import uuid
 import pytest
 from pathlib import Path
 from fastapi import HTTPException, status
@@ -9,6 +11,11 @@ from io import BytesIO
 from PIL import Image
 
 from app.storage.local_storage import LocalImageStorage
+
+
+UUID_FILENAME_PATTERN = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jpg$"
+)
 
 
 @pytest.mark.unit
@@ -24,22 +31,23 @@ class TestLocalImageStorage:
             file_resolver=mock_file_path_resolver
         )
 
-    def test_get_file_name_with_custom_filename(self, storage_service):
-        """Test filename generation with custom filename."""
-        filename = storage_service._get_file_name("my_image", "JPEG")
+    def test_get_storage_filename_with_id(self, storage_service):
+        """Test storage filename uses the provided UUID."""
+        storage_id, filename = storage_service._get_storage_filename("abc-123-def", "JPEG")
 
-        assert filename == "my_image.jpg"
+        assert storage_id == "abc-123-def"
+        assert filename == "abc-123-def.jpg"
+
+    def test_get_storage_filename_generates_uuid(self, storage_service):
+        """Test storage filename generates a UUID when none is provided."""
+        storage_id, filename = storage_service._get_storage_filename(None, "JPEG")
+
         assert filename.endswith(".jpg")
+        assert filename == f"{storage_id}.jpg"
+        uuid.UUID(storage_id)
 
-    def test_get_file_name_with_uuid(self, storage_service):
-        """Test filename generation with UUID when no filename provided."""
-        filename = storage_service._get_file_name(None, "JPEG")
-
-        assert filename.endswith(".jpg")
-        assert len(filename) > 4  # UUID + extension
-
-    def test_get_file_name_different_formats(self, storage_service):
-        """Test filename generation for different formats."""
+    def test_get_storage_filename_different_formats(self, storage_service):
+        """Test storage filename generation for different formats."""
         formats = {
             "JPEG": ".jpg",
             "PNG": ".png",
@@ -47,34 +55,34 @@ class TestLocalImageStorage:
         }
 
         for format_name, expected_ext in formats.items():
-            filename = storage_service._get_file_name("test", format_name)
-            assert filename.endswith(expected_ext)
+            storage_id, filename = storage_service._get_storage_filename("test-id", format_name)
+            assert filename == f"test-id{expected_ext}"
 
     def test_save_valid_image(self, storage_service, temp_directories, valid_upload_file):
-        """Test saving a valid image."""
+        """Test saving a valid image with UUID storage name."""
         valid_upload_file.file.seek(0)
         file_path = storage_service.save(
             file=valid_upload_file.file,
             folder="uploaded",
-            filename="test_save.jpg",
+            storage_id="11111111-1111-1111-1111-111111111111",
             format="JPEG"
         )
 
         assert Path(file_path).exists()
-        assert file_path.endswith(".jpg")
+        assert Path(file_path).name == "11111111-1111-1111-1111-111111111111.jpg"
 
-    def test_save_with_uuid_filename(self, storage_service, temp_directories, valid_upload_file):
+    def test_save_with_generated_uuid(self, storage_service, temp_directories, valid_upload_file):
         """Test saving image with auto-generated UUID filename."""
         valid_upload_file.file.seek(0)
         file_path = storage_service.save(
             file=valid_upload_file.file,
             folder="uploaded",
-            filename=None,
+            storage_id=None,
             format="JPEG"
         )
 
         assert Path(file_path).exists()
-        assert file_path.endswith(".jpg")
+        assert UUID_FILENAME_PATTERN.match(Path(file_path).name)
 
     def test_save_invalid_image(self, storage_service, temp_directories):
         """Test saving an invalid image file."""
@@ -90,12 +98,13 @@ class TestLocalImageStorage:
         """Test saving images to different folders."""
         folders = ["uploaded", "edited", "detected"]
 
-        for folder in folders:
+        for index, folder in enumerate(folders):
             valid_upload_file.file.seek(0)
+            storage_id = f"22222222-2222-2222-2222-22222222222{index}"
             file_path = storage_service.save(
                 file=valid_upload_file.file,
                 folder=folder,
-                filename=f"test_{folder}.jpg",
+                storage_id=storage_id,
                 format="JPEG"
             )
 

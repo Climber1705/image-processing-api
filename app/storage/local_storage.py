@@ -13,6 +13,7 @@ from app.media.utils.file_utils import FilePathResolver
 
 logger = get_logger("local_storage")
 
+
 class LocalImageStorage(BaseImageStorage):
     def __init__(
         self,
@@ -24,18 +25,20 @@ class LocalImageStorage(BaseImageStorage):
         self.image_verifier = image_validator
         self.file_resolver = file_resolver
 
-    def _get_file_name(self, filename: str | None, format: str = "JPEG") -> str:
+    def _get_storage_filename(self, storage_id: str | None, format: str = "JPEG") -> tuple[str, str]:
         format = self.image_verifier.validate_format(format)
         ext = self.image_verifier.get_extension(format)
+        storage_id = storage_id or str(uuid.uuid4())
+        return storage_id, f"{storage_id}{ext}"
 
-        if filename is None:
-            return f"{uuid.uuid4()}{ext}"
-
-        filename = Path(filename).stem
-        return f"{filename}{ext}"
-
-    def save(self, file: BinaryIO, folder: str | None = "uploaded", filename: str | None = None, format: str = "JPEG") -> str:
-        filename = self._get_file_name(filename, format)
+    def save(
+        self,
+        file: BinaryIO,
+        folder: str | None = "uploaded",
+        storage_id: str | None = None,
+        format: str = "JPEG",
+    ) -> str:
+        storage_id, filename = self._get_storage_filename(storage_id, format)
         directory = self.directory_manager.get_directory(folder)
         file_path = directory.joinpath(filename)
 

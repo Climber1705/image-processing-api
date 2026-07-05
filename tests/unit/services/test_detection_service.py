@@ -64,14 +64,16 @@ class TestObjectDetectionService:
 
         detection_service.engine.predict.return_value = sample_result
 
-        def mock_save(file, folder, filename, format):
-            output_path = temp_directories[folder] / filename
+        def mock_save(file, folder, storage_id=None, format="JPEG"):
+            storage_id = storage_id or "output-id"
+            ext = ".jpg" if format.upper() == "JPEG" else f".{format.lower()}"
+            output_path = temp_directories[folder] / f"{storage_id}{ext}"
             output_path.touch()
             return str(output_path)
 
         mock_local_storage.save.side_effect = mock_save
 
-        output_path = detection_service.get_bounding_boxes(str(image_path))
+        output_path = detection_service.get_bounding_boxes(str(image_path), "test_boxes.jpg")
 
         assert output_path is not None
         assert "bounding_boxes" in output_path or "detected" in output_path
@@ -87,14 +89,16 @@ class TestObjectDetectionService:
 
         detection_service.engine.predict.return_value = sample_result
 
-        def mock_save(file, folder, filename, format):
-            output_path = temp_directories[folder] / filename
+        def mock_save(file, folder, storage_id=None, format="JPEG"):
+            storage_id = storage_id or "output-id"
+            ext = ".jpg" if format.upper() == "JPEG" else f".{format.lower()}"
+            output_path = temp_directories[folder] / f"{storage_id}{ext}"
             output_path.touch()
             return str(output_path)
 
         mock_local_storage.save.side_effect = mock_save
 
-        result = detection_service.detect_with_visualization(str(image_path))
+        result = detection_service.detect_with_visualization(str(image_path), "test_single.jpg")
 
         assert result["image_with_boxes"] is not None
         assert len(result["detections"]) == 2

@@ -3,6 +3,8 @@ from fastapi import Depends
 
 from app.core.dependencies import get_format_extensions, get_directories
 from app.core.logging_config import get_logger
+from app.dependencies.repositories import get_image_repository
+from app.media.repository import ImageRepository
 from app.media.utils.directory_utils import DirectoryManager
 from app.media.utils.validator.simple_validator import SimpleImageValidator
 from app.media.utils.file_utils import FilePathResolver
@@ -23,6 +25,7 @@ def get_directory_manager(
 
 def get_file_path_resolver(
     directories: dict[str, Path] = Depends(get_directories),
+    image_repository: ImageRepository = Depends(get_image_repository),
 ) -> FilePathResolver:
     logger.debug("Creating FilePathResolver instance with directories: %s", directories)
-    return FilePathResolver(directories=directories)
+    return FilePathResolver(directories=directories, image_repository=image_repository)

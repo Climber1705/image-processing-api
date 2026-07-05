@@ -21,7 +21,7 @@ class TestEndToEndWorkflows:
         
         files = {"file": ("workflow_test.jpg", img_bytes, "image/jpeg")}
         upload_response = test_client_with_overrides.post(
-            "/images/upload",
+            "/images",
             files=files,
             data={"filename": "workflow_test", "format": "JPEG"}
         )
@@ -32,13 +32,13 @@ class TestEndToEndWorkflows:
         img.save(image_path, format='JPEG')
         
         resize_response = test_client_with_overrides.post(
-            "/images/edit/resize?image_name=workflow_test.jpg&width=400&height=300"
+            "/images/workflow_test.jpg/edits/resize?width=400&height=300"
         )
         
         assert resize_response.status_code == status.HTTP_200_OK
         
         detect_response = test_client_with_overrides.post(
-            "/images/detect/bounding_boxes/?image_name=workflow_test.jpg"
+            "/images/workflow_test.jpg/detections/bounding-boxes"
         )
         
         assert detect_response.status_code in [200, 400, 404, 500]
@@ -52,7 +52,7 @@ class TestEndToEndWorkflows:
         
         files = {"file": ("move_test.jpg", img_bytes, "image/jpeg")}
         upload_response = test_client_with_overrides.post(
-            "/images/upload",
+            "/images",
             files=files,
             data={"filename": "move_test", "format": "JPEG"}
         )
@@ -63,8 +63,8 @@ class TestEndToEndWorkflows:
         img.save(image_path, format='JPEG')
         
         move_data = {"source_folder": "uploaded", "target_folder": "edited"}
-        move_response = test_client_with_overrides.post(
-            "/images/move_test.jpg/move",
+        move_response = test_client_with_overrides.patch(
+            "/images/move_test.jpg",
             json=move_data
         )
         
@@ -72,7 +72,7 @@ class TestEndToEndWorkflows:
         
         
         delete_response = test_client_with_overrides.delete(
-            "/images/move_test.jpg/delete?folder=edited"
+            "/images/move_test.jpg?folder=edited"
         )
         
         assert delete_response.status_code == status.HTTP_200_OK
@@ -84,9 +84,9 @@ class TestEndToEndWorkflows:
         img.save(img_path, format="JPEG")
         
         edits = [
-            ("/images/edit/grayscale?image_name=multi_edit.jpg", "POST"),
-            ("/images/edit/resize?image_name=multi_edit.jpg&width=400&height=300", "POST"),
-            ("/images/edit/brightness?image_name=multi_edit.jpg&factor=1.2", "POST")
+            ("/images/multi_edit.jpg/edits/grayscale", "POST"),
+            ("/images/multi_edit.jpg/edits/resize?width=400&height=300", "POST"),
+            ("/images/multi_edit.jpg/edits/brightness?factor=1.2", "POST")
         ]
         
         for endpoint, method in edits:
@@ -97,13 +97,13 @@ class TestEndToEndWorkflows:
     def test_error_recovery_scenario(self, test_client_with_overrides):
         """Test error recovery scenarios."""
         response = test_client_with_overrides.post(
-            "/images/edit/resize?image_name=nonexistent.jpg&width=400&height=300"
+            "/images/nonexistent.jpg/edits/resize?width=400&height=300"
         )
         
         assert response.status_code in [404, 500]
         
         delete_response = test_client_with_overrides.delete(
-            "/images/nonexistent.jpg/delete?folder=uploaded"
+            "/images/nonexistent.jpg?folder=uploaded"
         )
         
         assert delete_response.status_code == status.HTTP_404_NOT_FOUND

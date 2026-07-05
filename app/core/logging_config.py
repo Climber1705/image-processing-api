@@ -19,7 +19,7 @@ file_handler = RotatingFileHandler(log_file_path, maxBytes=5 * 1024 * 1024, back
 file_handler.setFormatter(formatter)
 file_handler.setLevel(logging.INFO)
 
-if settings.DEBUG:
+if logger.level == logging.DEBUG:
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
     console_handler.setLevel(logging.DEBUG)
