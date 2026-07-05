@@ -1,29 +1,27 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
-from typing import Annotated
-import asyncio
 import time
+import asyncio
+from fastapi import APIRouter, Depends, HTTPException, Request
 
-from app.utils.file_operations.file_utils import FilePathResolver, get_file_path_resolver
-from app.managers.detection_manager import DetectionManager, get_detection_manager
-from app.schemas.detection.detection_responses import BoundingBoxResponse, DetectedObjectsResponse, DetectionBox
 from app.core.rate_limiting import limiter
 from app.core.logging_config import get_logger
+from app.dependencies.managers import get_detection_manager
+from app.dependencies.utils import get_file_path_resolver
+
+from app.utils.file_operations.file_utils import FilePathResolver
+from app.managers.detection_manager import DetectionManager
+from app.schemas.detection.detection_responses import BoundingBoxResponse, DetectedObjectsResponse, DetectionBox
 
 logger = get_logger("detection_routes")
 
 router = APIRouter(prefix="/images/detect", tags=["Image Detections"])
-
-DetectionManagerDep = Annotated[DetectionManager, Depends(get_detection_manager)]
-FilePathResolverDep = Annotated[FilePathResolver, Depends(get_file_path_resolver)]
-
 
 @router.post("/bounding_boxes/", response_model=BoundingBoxResponse)
 @limiter.limit("5/minute")
 async def bounding_boxes(
     request: Request,
     image_name: str,
-    manager: DetectionManagerDep,
-    file_resolver: FilePathResolverDep,
+    detection_manager: DetectionManager = Depends(get_detection_manager),
+    file_resolver: FilePathResolver = Depends(get_file_path_resolver),
 ):
     """Run DETR detection and save an annotated image with bounding boxes."""
     start_time = time.time()
@@ -33,7 +31,7 @@ async def bounding_boxes(
 
     try:
         logger.info(f"Processing image for bounding boxes: {image_name}")
-        data = await asyncio.to_thread(manager.process_image_for_detection, image_path)
+        data = await asyncio.to_thread(detection_manager.process_image_for_detection, image_path)
     except RuntimeError as e:
         logger.error(f"Error processing image: {image_name}, Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
@@ -57,8 +55,8 @@ async def bounding_boxes(
 async def detected_objects(
     request: Request,
     image_name: str,
-    manager: DetectionManagerDep,
-    file_resolver: FilePathResolverDep,
+    detection_manager: DetectionManager = Depends(get_detection_manager),
+    file_resolver: FilePathResolver = Depends(get_file_path_resolver),
 ):
     """Run DETR detection and return label/confidence/box metadata only."""
     start_time = time.time()
@@ -68,7 +66,7 @@ async def detected_objects(
 
     try:
         logger.info(f"Retrieving detected objects for image: {image_name}")
-        summary = await asyncio.to_thread(manager.get_detected_objects_summary, image_path)
+        summary = await asyncio.to_thread(detection_manager.get_detected_objects_summary, image_path)
     except RuntimeError as e:
         logger.error(f"Error retrieving detected objects for image: {image_name}, Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error retrieving detected objects: {str(e)}")
