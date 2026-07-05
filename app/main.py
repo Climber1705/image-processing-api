@@ -4,8 +4,8 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.routes import detection_routes, image_routes, editing_routes, health_routes
+from app.core.lifespan import lifespan
 from app.core.rate_limiting import limiter
-from app.utils.system.lifespan import lifespan
 
 description = """
 Upload, manage, and process images.
