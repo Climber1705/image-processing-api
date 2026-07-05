@@ -3,6 +3,8 @@ import logging
 
 from fastapi import HTTPException, UploadFile, status
 
+from app.core.settings import settings
+
 logger = logging.getLogger("validator")
 
 DEFAULT_MAX_SIZE_MB = 5
@@ -29,9 +31,7 @@ def allowed_mime_types_for_formats(format_extensions: dict[str, str]) -> tuple[s
 
 
 def default_allowed_mime_types() -> tuple[str, ...]:
-    from app.core.config import get_settings
-
-    return allowed_mime_types_for_formats(get_settings().format_extensions)
+    return allowed_mime_types_for_formats(settings.format_extensions)
 
 
 def validate_image_type(
