@@ -16,7 +16,7 @@ class TestImageEditService:
     """Test cases for ImageEditService."""
 
     @pytest.fixture
-    def edit_service(self, temp_directories, mock_directory_manager, mock_image_validator, mock_file_path_resolver):
+    def edit_service(self, temp_directories, format_extensions):
         """Create ImageEditService with real storage and mocked CRUD."""
         mock_image_service = Mock()
 
@@ -24,18 +24,19 @@ class TestImageEditService:
             return temp_directories.get(folder, temp_directories["uploaded"]) / image_name
 
         mock_image_service.get_image_path.side_effect = get_image_path_side_effect
-        mock_image_service.get_or_create_storage_id.return_value = "11111111-1111-1111-1111-111111111111"
-        mock_image_service.register_saved_image.return_value = {}
 
-        local_storage = LocalImageStorage(
-            directory_manager=mock_directory_manager,
-            image_validator=mock_image_validator,
-            file_resolver=mock_file_path_resolver,
+        mock_image_repository = Mock()
+        mock_image_repository.get_or_create_image_id.return_value = "11111111-1111-1111-1111-111111111111"
+
+        storage = LocalImageStorage(
+            directories=temp_directories,
+            format_extensions=format_extensions,
         )
 
         return ImageEditService(
             image_service=mock_image_service,
-            local_storage=local_storage,
+            image_repository=mock_image_repository,
+            storage=storage,
         )
 
     def test_build_display_filename_with_suffix(self, edit_service):
@@ -61,8 +62,8 @@ class TestImageEditService:
             assert resized_img.width == 400
             assert resized_img.height == 300
 
-        edit_service.image_service.register_saved_image.assert_called_once()
-        call_kwargs = edit_service.image_service.register_saved_image.call_args.kwargs
+        edit_service.image_repository.upsert_record.assert_called_once()
+        call_kwargs = edit_service.image_repository.upsert_record.call_args.kwargs
         assert call_kwargs["display_filename"] == "test_resize_resized.jpg"
 
     def test_rotate_image(self, edit_service, temp_directories):

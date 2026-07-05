@@ -1,15 +1,11 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field
-
-
-class MoveImageRequest(BaseModel):
-    source_folder: str = Field("uploaded", description="Current folder name")
-    target_folder: str = Field("edited", description="Target folder name")
+from pydantic import BaseModel
 
 
 class StatusResponse(BaseModel):
     status: str
+    message: str | None = None
 
 
 class ImageMetadata(BaseModel):
@@ -46,8 +42,3 @@ class ImageDetailResponse(BaseModel):
     size_bytes: int
     path: str
     url: Optional[str] = None
-
-
-class ImageDimensionsResponse(BaseModel):
-    width: int
-    height: int

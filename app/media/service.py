@@ -1,15 +1,31 @@
-import shutil
 import uuid
-from typing import Any
 from pathlib import Path
-from fastapi import UploadFile, HTTPException
+from fastapi import UploadFile
 
-from app.media.repository import ImageRepository
-from app.media.utils.directory_utils import DirectoryManager
-from app.media.utils.file_utils import FilePathResolver
-from app.media.schema import ImageListItem
-from app.storage.local_storage import LocalImageStorage
+from app.core.config import Settings
 from app.core.logging_config import get_logger
+from app.media.domain.dtos import (
+    DeleteImageResultDTO,
+    ImageDTO,
+    OperationStatusDTO,
+    SaveImageResultDTO,
+)
+from app.media.domain.enums import FolderFilter, ImageFolder
+from app.media.domain.errors import (
+    ImageConflictError,
+    ImageCreationError,
+    ImageNotFoundError,
+    ImageOperationError,
+    ImageSaveError,
+    InvalidFolderError,
+    InvalidMoveError,
+)
+from app.media.utils.filename import get_display_filename
+from app.media.utils.hash import compute_checksum
+from app.media.utils.mappers import record_to_dto
+from app.media.repository import ImageRepository
+from app.storage.base_storage import BaseImageStorage
+from app.validation.validator import get_format_extension, validate_image_format
 
 logger = get_logger("image_service")
 
@@ -17,207 +33,182 @@ logger = get_logger("image_service")
 class ImageService:
     def __init__(
         self,
-        local_storage: LocalImageStorage,
-        directory_manager: DirectoryManager,
-        file_resolver: FilePathResolver,
-        directories: dict[str, Path],
-        image_repository: ImageRepository,
+        settings: Settings,
+        repository: ImageRepository,
+        storage: BaseImageStorage,
     ) -> None:
-        self.local_storage = local_storage
-        self.directory_manager = directory_manager
-        self.file_resolver = file_resolver
-        self.directories = directories
-        self.image_repository = image_repository
+        self.repository = repository
+        self.storage = storage
+        self.settings = settings
 
-    def _get_folder_names(self, folder: str) -> list[str]:
-        if folder == "all":
-            return ["uploaded", "edited", "detected"]
-        return [folder]
-
-    def _record_to_list_item(self, record) -> ImageListItem:
-        return ImageListItem(**{
-            key: value
-            for key, value in self.image_repository.to_metadata(record).items()
-            if key in ImageListItem.model_fields
-        })
-
-    def _get_record_or_404(self, filename: str, folder: str):
-        record = self.image_repository.get_by_filename(filename, folder)
-        if record is None:
-            logger.warning(f"Image {filename} not found in {folder}")
-            raise HTTPException(status_code=404, detail=f"Image {filename} not found in {folder}")
-        return record
-
-    def _resolve_display_filename(
+    def upload_image(
         self,
-        filename: str | None,
-        original_filename: str | None,
-        format: str,
-    ) -> str:
-        ext = self.local_storage.image_verifier.get_extension(
-            self.local_storage.image_verifier.validate_format(format)
+        file: UploadFile,
+        filename: str | None = None,
+        output_format: str = "JPEG",
+    ) -> SaveImageResultDTO:
+        validated_format = validate_image_format(output_format, self.settings.format_extensions)
+        extension = get_format_extension(validated_format, self.settings.format_extensions)
+        display_filename = get_display_filename(filename, file.filename, extension)
+
+        file.file.seek(0)
+        content_hash = compute_checksum(file.file)
+
+        existing_record = self.repository.get_by_content_hash(content_hash, ImageFolder.UPLOADED)
+        if existing_record is not None:
+            logger.info("Duplicate image detected", extra={"content_hash": content_hash})
+            existing_image = record_to_dto(existing_record)
+            return SaveImageResultDTO(path=existing_image.path, image=existing_image)
+
+        image_id = str(uuid.uuid4())
+        file.file.seek(0)
+        saved_path = self.storage.save(
+            file=file.file,
+            folder=ImageFolder.UPLOADED,
+            storage_id=image_id,
+            format=output_format,
+            display_filename=display_filename,
         )
-        if filename:
-            return f"{Path(filename).stem}{ext}"
-        if original_filename:
-            original = Path(original_filename)
-            return f"{original.stem}{ext}"
-        return f"image{ext}"
 
-    def get_or_create_storage_id(self, display_filename: str, folder: str) -> str:
-        existing = self.image_repository.get_by_filename(display_filename, folder)
-        if existing is not None:
-            return existing.id
-        return str(uuid.uuid4())
-
-    def register_saved_image(
-        self,
-        path: str | Path,
-        folder: str,
-        display_filename: str,
-        image_id: str,
-    ) -> dict[str, Any]:
-        record = self.image_repository.create_record(path, folder, display_filename, image_id)
-        return self.image_repository.to_metadata(record)
-
-    def save_uploaded_image(
-        self, file: UploadFile, filename: str | None = None, format: str = "JPEG"
-    ) -> tuple[str, dict[str, Any]]:
         try:
-            display_filename = self._resolve_display_filename(filename, file.filename, format)
-            logger.info(f"Saving uploaded image as {display_filename}")
-            storage_id = self.get_or_create_storage_id(display_filename, "uploaded")
-            file.file.seek(0)
-            file_path = self.local_storage.save(
-                file=file.file,
-                folder="uploaded",
-                storage_id=storage_id,
-                format=format,
-            )
-            metadata = self.register_saved_image(
-                path=file_path,
-                folder="uploaded",
+            image = self.repository.create(
+                image_id=image_id,
+                path=saved_path,
+                folder=ImageFolder.UPLOADED,
                 display_filename=display_filename,
-                image_id=storage_id,
+                content_hash=content_hash,
             )
-            return file_path, metadata
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Failed to save uploaded image: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to save image: {e}")
+            return SaveImageResultDTO(
+                path=saved_path,
+                image=image,
+            )
+        except ImageCreationError:
+            self.storage.delete(saved_path)
+            existing_record = self.repository.get_by_content_hash(content_hash, ImageFolder.UPLOADED)
+            if existing_record is not None:
+                logger.info(
+                    "Duplicate image detected after create race",
+                    extra={"content_hash": content_hash},
+                )
+                existing_image = record_to_dto(existing_record)
+                return SaveImageResultDTO(
+                    path=existing_image.path,
+                    image=existing_image,
+                )
+            raise ImageSaveError("Failed to save image") from None
+        except Exception as exc:
+            self.storage.delete(saved_path)
+            if isinstance(exc, (ImageNotFoundError, ImageSaveError)):
+                raise
+            logger.error("Failed to save uploaded image: %s", exc)
+            raise ImageSaveError(f"Failed to save image: {exc}") from exc
 
-    def get_image_path(self, image_name: str, folder: str = "uploaded") -> Path:
-        record = self._get_record_or_404(image_name, folder)
+    def get_image_path(self, filename: str, folder: str = ImageFolder.UPLOADED) -> Path:
+        record = self.repository.get_by_filename(filename, folder)
+        if record is None:
+            raise ImageNotFoundError(f"Image {filename} not found in {folder}")
+
         path = Path(record.path)
-        if not path.exists():
-            raise HTTPException(status_code=404, detail=f"Image {image_name} not found in {folder}")
+        if not self.storage.exists(path):
+            raise ImageNotFoundError(f"Image {filename} not found in {folder}")
         return path
 
-    def get_image_dimensions(self, image_name: str, folder: str = "uploaded") -> tuple[int, int]:
-        logger.debug(f"Getting image dimensions for: {image_name} in folder: {folder}")
-        record = self._get_record_or_404(image_name, folder)
-        return record.width, record.height
-
-    def get_image_by_id(self, image_id: str, folder: str = "uploaded") -> dict[str, Any]:
-        logger.debug(f"Getting image by ID: {image_id}")
-        record = self._get_record_or_404(image_id, folder)
-        return self.image_repository.to_metadata(record)
-
-    def list_images(
+    def get_image_by_filename(
         self,
-        folder: str = "uploaded",
+        filename: str,
+        folder: str = ImageFolder.UPLOADED,
+    ) -> ImageDTO:
+        record = self.repository.get_by_filename(filename, folder)
+        if record is None:
+            raise ImageNotFoundError(f"Image {filename} not found in {folder}")
+        return record_to_dto(record)
+
+    def get_images(
+        self,
+        folder: str = ImageFolder.UPLOADED,
         limit: int = 100,
         offset: int = 0,
-    ) -> list[ImageListItem]:
-        logger.debug(f"Listing images in folder: {folder}, limit={limit}, offset={offset}")
-        records = self.image_repository.list_by_folder(
-            folders=self._get_folder_names(folder),
+    ) -> list[ImageDTO]:
+        records = self.repository.get_by_folder(
+            folders=ImageFolder.get_folder_names(folder),
             limit=limit,
             offset=offset,
         )
-        return [self._record_to_list_item(record) for record in records]
+        return [record_to_dto(record) for record in records]
 
-    def delete_image(self, image_id: str, folder: str = "uploaded") -> dict[str, Any]:
-        logger.info(f"Deleting image with ID: {image_id} from folder: {folder}")
-        record = self._get_record_or_404(image_id, folder)
-        image_path = Path(record.path)
-        image_info = self.image_repository.to_metadata(record)
+    def delete_image(self, filename: str, folder: str = ImageFolder.UPLOADED) -> DeleteImageResultDTO:
+        record = self.repository.get_by_filename(filename, folder)
+        if record is None:
+            raise ImageNotFoundError(f"Image {filename} not found in {folder}")
 
-        if not image_path.exists():
-            logger.warning(f"File missing for {image_id} at {image_path}, removing DB record")
-            self.image_repository.delete_by_filename(image_id, folder)
-            raise HTTPException(status_code=404, detail=f"Image {image_id} not found in {folder} folder")
+        deleted_image = record_to_dto(record)
+        if not self.storage.delete(record.path):
+            logger.warning(
+                "File missing for %s at %s, removing DB record",
+                filename,
+                record.path,
+            )
+            self.repository.delete_by_filename(filename, folder)
+            raise ImageNotFoundError(f"Image {filename} not found in {folder} folder")
 
-        try:
-            image_path.unlink()
-            self.image_repository.delete_by_filename(image_id, folder)
-            logger.info(f"Deleted image {image_id} from {folder}")
-            return {
-                "status": "success",
-                "message": f"Image {image_id} deleted from {folder}",
-                "deleted_image": image_info,
-            }
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Error deleting image: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to delete image: {e}")
+        self.repository.delete_by_filename(filename, folder)
+        return DeleteImageResultDTO(
+            status="success",
+            message=f"Image {filename} deleted from {folder}",
+            deleted_image=deleted_image,
+        )
 
-    def delete_all_images(self, folder: str) -> dict[str, str]:
-        logger.warning(f"Deleting all images in folder: {folder}")
-        if folder not in {"uploaded", "edited", "detected", "all"}:
-            logger.warning(f"Invalid folder: {folder}")
-            raise HTTPException(status_code=400, detail=f"Invalid folder: {folder}")
+    def delete_images(self, folder: str) -> OperationStatusDTO:
+        logger.warning("Deleting all images in folder: %s", folder)
+        if folder not in FolderFilter.values():
+            raise InvalidFolderError(f"Invalid folder: {folder}")
 
-        records = self.image_repository.list_all_by_folders(self._get_folder_names(folder))
+        records = self.repository.get_all_by_folders(ImageFolder.get_folder_names(folder))
         deleted_count = 0
 
         for record in records:
-            image_path = Path(record.path)
             try:
-                if image_path.exists():
-                    image_path.unlink()
-                deleted_count += 1
-            except Exception as e:
-                logger.warning(f"Failed to delete {image_path}: {e}")
+                if self.storage.delete(record.path):
+                    deleted_count += 1
+                elif not self.storage.exists(record.path):
+                    deleted_count += 1
+            except Exception as exc:
+                logger.warning("Failed to delete %s: %s", record.path, exc)
 
-        self.image_repository.delete_by_folders(self._get_folder_names(folder))
-        logger.info(f"Deleted {deleted_count} images from {folder}")
-        return {
-            "status": "success",
-            "message": f"Deleted {deleted_count} images from {folder}",
-        }
+        self.repository.delete_by_folders(ImageFolder.get_folder_names(folder))
+        return OperationStatusDTO(
+            status="success",
+            message=f"Deleted {deleted_count} images from {folder}",
+        )
 
-    def move_image(self, image_id: str, source_folder: str, target_folder: str) -> dict[str, Any]:
-        logger.info(f"Moving image {image_id} from {source_folder} to {target_folder}")
+    def move_image(self, filename: str, source_folder: str, target_folder: str) -> ImageDTO:
         if source_folder == target_folder:
-            logger.warning("Source and target folders cannot be the same")
-            raise HTTPException(status_code=400, detail="Source and target folders cannot be the same")
+            raise InvalidMoveError("Source and target folders cannot be the same")
 
-        record = self._get_record_or_404(image_id, source_folder)
-        source_path = Path(record.path)
-        target_path = self.directory_manager.get_directory(target_folder) / source_path.name
+        record = self.repository.get_by_filename(filename, source_folder)
+        if record is None:
+            raise ImageNotFoundError(f"Image {filename} not found in {source_folder}")
 
-        if not source_path.exists():
-            raise HTTPException(status_code=404, detail=f"Image {image_id} not found in {source_folder}")
+        if not self.storage.exists(record.path):
+            raise ImageNotFoundError(f"Image {filename} not found in {source_folder}")
 
-        if target_path.exists():
-            logger.warning(f"Image {image_id} already exists in {target_folder}")
-            raise HTTPException(status_code=409, detail=f"Image {image_id} already exists in {target_folder}")
+        destination_path = self.storage.destination_path(record.path, target_folder)
+        if self.storage.exists(destination_path):
+            raise ImageConflictError(f"Image {filename} already exists in {target_folder}")
 
         try:
-            shutil.move(str(source_path), str(target_path))
-            updated = self.image_repository.update_location(
-                filename=image_id,
+            new_path = self.storage.move(record.path, target_folder)
+            updated_image = self.repository.update(
+                filename=filename,
                 source_folder=source_folder,
                 target_folder=target_folder,
-                new_path=str(target_path),
+                new_path=new_path,
             )
-            logger.info(f"Moved image {image_id} from {source_folder} to {target_folder}")
-            return self.image_repository.to_metadata(updated)
-        except HTTPException:
+            if updated_image is None:
+                raise ImageOperationError("Failed to update image location")
+            return updated_image
+        except (ImageNotFoundError, ImageConflictError, InvalidMoveError, ImageOperationError):
             raise
-        except Exception as e:
-            logger.error(f"Error moving image: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to move image: {e}")
+        except Exception as exc:
+            logger.error("Error moving image: %s", exc)
+            raise ImageOperationError(f"Failed to move image: {exc}") from exc

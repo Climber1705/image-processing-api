@@ -16,7 +16,6 @@ async def root():
     )
 
 
-@router.get("/health")
 @router.get("/health/live")
 async def health_live():
     return JSONResponse(

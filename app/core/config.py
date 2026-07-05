@@ -1,10 +1,12 @@
 import os
 import logging
-from functools import lru_cache
 from pathlib import Path
+from functools import lru_cache
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.media.domain.enums import ImageFolder
 
 LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -44,21 +46,33 @@ class Settings(BaseSettings):
     MAX_IMAGE_DIMENSION: int = 1333
     WARMUP_ON_STARTUP: bool = True
 
+    FORMAT_EXTENSIONS: dict[str, str] = {
+        "JPEG": ".jpg",
+        "JPG": ".jpg",
+        "PNG": ".png",
+        "GIF": ".gif",  
+        "BMP": ".bmp",
+        "TIFF": ".tiff",
+        "WEBP": ".webp",
+    }
+
     @property
     def directories(self) -> dict[str, Path]:
         return {
-            "uploaded": self.UPLOADED_FOLDER,
-            "edited": self.EDITED_FOLDER,
-            "detected": self.DETECTED_FOLDER,
+            ImageFolder.UPLOADED: self.UPLOADED_FOLDER,
+            ImageFolder.EDITED: self.EDITED_FOLDER,
+            ImageFolder.DETECTED: self.DETECTED_FOLDER,
         }
+
+    @property
+    def format_extensions(self) -> dict[str, str]:
+        return self.FORMAT_EXTENSIONS
 
     def setup(self) -> None:
         for path in [self.UPLOADED_FOLDER, self.EDITED_FOLDER, self.DETECTED_FOLDER]:
             if not path.exists():
                 path.mkdir(parents=True, exist_ok=True)
                 logger.info("Created directory: %s", path)
-            else:
-                logger.debug("Directory already exists: %s", path)
 
         if self.DATABASE_URL.startswith("sqlite:///./"):
             db_path = Path(self.DATABASE_URL.removeprefix("sqlite:///./"))

@@ -22,20 +22,11 @@ from fastapi import UploadFile, HTTPException, status
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.core.dependencies import get_directories
-from app.media.utils.directory_utils import DirectoryManager
-from app.media.utils.file_utils import FilePathResolver
-from app.media.utils.validator.simple_validator import SimpleImageValidator
+from app.storage.directories import DirectoryManager
 from app.storage.local_storage import LocalImageStorage
 from app.media.service import ImageService
-from app.media.metadata import get_image_dimensions, get_image_metadata
 from app.editing.image_editor import ImageEditService
 from app.vision.detection_service import ObjectDetectionService
-from app.dependencies.utils import (
-    get_directory_manager,
-    get_file_path_resolver,
-    get_simple_image_validator,
-)
 from app.dependencies.storage import get_local_image_storage
 from app.dependencies.services import (
     get_image_edit_service,
@@ -80,57 +71,11 @@ def mock_directory_manager(temp_directories: Dict[str, Path]) -> Mock:
     mock.validate_folder.side_effect = lambda folder: folder in temp_directories
     return mock
 
-
-@pytest.fixture
-def mock_file_path_resolver(temp_directories: Dict[str, Path]) -> Mock:
-    """Create a mock FilePathResolver."""
-    mock = Mock(spec=FilePathResolver)
-    
-    def find_file_side_effect(filename: str) -> Path:
-        for dir_path in temp_directories.values():
-            file_path = dir_path / filename
-            if file_path.exists():
-                return file_path
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"No file named '{filename}' exists"
-        )
-    
-    mock.find_file.side_effect = find_file_side_effect
-    mock.find_and_validate_image.side_effect = lambda name: str(find_file_side_effect(name))
-    return mock
-
-
-@pytest.fixture
-def mock_image_validator() -> Mock:
-    """Create a mock SimpleImageValidator."""
-    mock = Mock(spec=SimpleImageValidator)
-    
-    def validate_side_effect(file: UploadFile):
-        """Validate file type - reject non-image files."""
-        if file.content_type and not file.content_type.startswith("image/"):
-            raise HTTPException(status_code=400, detail=f"Unsupported file type: {file.content_type}. Allowed types: image/jpeg, image/png")
-    
-    def validate_type_side_effect(file: UploadFile):
-        """Validate file type."""
-        if file.content_type and not file.content_type.startswith("image/"):
-            raise HTTPException(status_code=400, detail=f"Unsupported file type: {file.content_type}. Allowed types: image/jpeg, image/png")
-    
-    mock.validate.side_effect = validate_side_effect
-    mock.validate_type.side_effect = validate_type_side_effect
-    mock.validate_size.return_value = None
-    mock.validate_format.side_effect = lambda fmt: fmt.upper()
-    mock.get_extension.side_effect = lambda fmt: {
-        "JPEG": ".jpg",
-        "PNG": ".png",
-        "GIF": ".gif"
-    }.get(fmt.upper(), ".jpg")
-    return mock
-
-
 @pytest.fixture
 def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mock) -> Mock:
     """Create a mock ImageService."""
+    from app.media.domain.dtos import DeleteImageResultDTO, ImageDTO, OperationStatusDTO, SaveImageResultDTO
+
     mock = Mock(spec=ImageService)
     mock.local_storage = mock_local_storage
 
@@ -139,11 +84,26 @@ def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mo
 
     mock.get_image_path.side_effect = get_image_path_side_effect
 
-    def list_images_side_effect(
+    def build_image_dto(image_path: Path, folder: str) -> ImageDTO:
+        with Image.open(image_path) as img:
+            return ImageDTO(
+                id=image_path.stem,
+                filename=image_path.name,
+                format=img.format or "JPEG",
+                mode=img.mode,
+                width=img.width,
+                height=img.height,
+                size_bytes=os.path.getsize(image_path),
+                path=str(image_path),
+                url=None,
+                folder=folder,
+            )
+
+    def get_images_side_effect(
         folder: str = "uploaded",
         limit: int = 100,
         offset: int = 0,
-    ):
+    ) -> list[ImageDTO]:
         folder_map = {
             "uploaded": [temp_directories["uploaded"]],
             "edited": [temp_directories["edited"]],
@@ -156,70 +116,52 @@ def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mo
                 detail=f"Invalid folder: {folder}. Valid options: {list(folder_map.keys())}",
             )
 
-        results = []
+        results: list[ImageDTO] = []
         valid_extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp"}
 
         for directory in folder_map[folder]:
             if not directory.exists():
                 continue
-            search_path = directory
             image_files = [
-                f for f in search_path.rglob("*")
-                if f.suffix.lower() in valid_extensions and f.is_file()
+                path
+                for path in directory.rglob("*")
+                if path.suffix.lower() in valid_extensions and path.is_file()
             ]
-            for img_path in image_files[offset : offset + limit]:
+            for image_path in image_files[offset : offset + limit]:
                 try:
-                    with Image.open(img_path) as img:
-                        results.append({
-                            "filename": img_path.name,
-                            "format": img.format,
-                            "mode": img.mode,
-                            "width": img.width,
-                            "height": img.height,
-                            "size_bytes": os.path.getsize(img_path),
-                            "path": str(img_path),
-                            "url": None,
-                            "folder": directory.name,
-                        })
+                    results.append(build_image_dto(image_path, directory.name))
                 except (FileNotFoundError, OSError):
                     continue
         return results
 
-    mock.list_images.side_effect = list_images_side_effect
-    def get_image_by_id_side_effect(image_id: str, folder: str = "uploaded"):
-        image_path = temp_directories.get(folder, temp_directories["uploaded"]) / image_id
+    mock.get_images.side_effect = get_images_side_effect
+
+    def get_image_by_filename_side_effect(filename: str, folder: str = "uploaded") -> ImageDTO:
+        image_path = temp_directories.get(folder, temp_directories["uploaded"]) / filename
         if not image_path.exists():
-            raise HTTPException(status_code=404, detail=f"Image {image_id} not found in {folder}")
+            raise HTTPException(status_code=404, detail=f"Image {filename} not found in {folder}")
         try:
-            with Image.open(image_path) as img:
-                return {
-                    "filename": Path(image_path).name,
-                    "format": img.format,
-                    "mode": img.mode,
-                    "width": img.width,
-                    "height": img.height,
-                    "size_bytes": os.path.getsize(image_path) if os.path.exists(image_path) else 102400,
-                    "path": str(image_path),
-                    "url": None
-                }
+            return build_image_dto(image_path, folder)
         except (FileNotFoundError, OSError):
-            raise HTTPException(status_code=404, detail=f"Image {image_id} not found in {folder}")
-    
-    mock.get_image_by_id.side_effect = get_image_by_id_side_effect
-    def delete_image_side_effect(image_id: str, folder: str = "uploaded"):
-        image_path = temp_directories.get(folder, temp_directories["uploaded"]) / image_id
+            raise HTTPException(status_code=404, detail=f"Image {filename} not found in {folder}")
+
+    mock.get_image_by_filename.side_effect = get_image_by_filename_side_effect
+
+    def delete_image_side_effect(filename: str, folder: str = "uploaded") -> DeleteImageResultDTO:
+        image_path = temp_directories.get(folder, temp_directories["uploaded"]) / filename
         if not image_path.exists():
-            raise HTTPException(status_code=404, detail=f"Image {image_id} not found in {folder} folder")
-        if image_path.exists():
-            image_path.unlink()
-        return {
-            "status": "success",
-            "message": f"Image {image_id} deleted from {folder}",
-            "deleted_image": {}
-        }
+            raise HTTPException(status_code=404, detail=f"Image {filename} not found in {folder} folder")
+        deleted_image = build_image_dto(image_path, folder)
+        image_path.unlink()
+        return DeleteImageResultDTO(
+            status="success",
+            message=f"Image {filename} deleted from {folder}",
+            deleted_image=deleted_image,
+        )
+
     mock.delete_image.side_effect = delete_image_side_effect
 
-    def delete_all_images_side_effect(folder: str):
+    def delete_images_side_effect(folder: str) -> OperationStatusDTO:
         folder_map = {
             "uploaded": [temp_directories["uploaded"]],
             "edited": [temp_directories["edited"]],
@@ -234,75 +176,47 @@ def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mo
         for directory in folder_map[folder]:
             if not directory.exists():
                 continue
-            for img_path in directory.rglob("*"):
-                if img_path.suffix.lower() in valid_extensions and img_path.is_file():
-                    img_path.unlink()
+            for image_path in directory.rglob("*"):
+                if image_path.suffix.lower() in valid_extensions and image_path.is_file():
+                    image_path.unlink()
                     deleted_count += 1
-        return {
-            "status": "success",
-            "message": f"Deleted {deleted_count} images from {folder}",
-        }
+        return OperationStatusDTO(
+            status="success",
+            message=f"Deleted {deleted_count} images from {folder}",
+        )
 
-    mock.delete_all_images.side_effect = delete_all_images_side_effect
-    def move_image_side_effect(image_id: str, source_folder: str, target_folder: str):
-        source_path = temp_directories.get(source_folder, temp_directories["uploaded"]) / image_id
-        target_path = temp_directories.get(target_folder, temp_directories["edited"]) / image_id
-        
+    mock.delete_images.side_effect = delete_images_side_effect
+
+    def move_image_side_effect(filename: str, source_folder: str, target_folder: str) -> ImageDTO:
+        source_path = temp_directories.get(source_folder, temp_directories["uploaded"]) / filename
+        target_path = temp_directories.get(target_folder, temp_directories["edited"]) / filename
+
         if not source_path.exists():
-            raise HTTPException(status_code=404, detail=f"Image {image_id} not found in {source_folder}")
+            raise HTTPException(status_code=404, detail=f"Image {filename} not found in {source_folder}")
         if target_path.exists():
-            raise HTTPException(status_code=409, detail=f"Image {image_id} already exists in {target_folder}")
-        
-        shutil.move(str(source_path), str(target_path))
+            raise HTTPException(status_code=409, detail=f"Image {filename} already exists in {target_folder}")
 
-        try:
-            with Image.open(target_path) as img:
-                return {
-                    "filename": Path(target_path).name,
-                    "format": img.format,
-                    "mode": img.mode,
-                    "width": img.width,
-                    "height": img.height,
-                    "size_bytes": os.path.getsize(target_path) if os.path.exists(target_path) else 102400,
-                    "path": str(target_path),
-                    "url": None
-                }
-        except (FileNotFoundError, OSError):
-            return {
-                "filename": Path(target_path).name,
-                "format": "JPEG",
-                "mode": "RGB",
-                "width": 800,
-                "height": 600,
-                "size_bytes": 102400,
-                "path": str(target_path),
-                "url": None
-            }
-    
+        shutil.move(str(source_path), str(target_path))
+        return build_image_dto(target_path, target_folder)
+
     mock.move_image.side_effect = move_image_side_effect
-    mock.get_or_create_storage_id.return_value = "11111111-1111-1111-1111-111111111111"
-    mock.register_saved_image.return_value = {}
-    mock.save_uploaded_image.side_effect = (
-        lambda file, filename=None, format="JPEG": (
-            mock_local_storage.save(file=file, folder="uploaded", storage_id="upload-id", format=format),
-            {
-                "filename": filename or "test.jpg",
-                "format": format,
-                "mode": "RGB",
-                "width": 100,
-                "height": 100,
-                "size_bytes": 1024,
-                "path": str(temp_directories["uploaded"] / (filename or "test.jpg")),
-                "url": None,
-                "folder": "uploaded",
-            },
+
+    mock.upload_image.side_effect = (
+        lambda file, filename=None, output_format="JPEG": SaveImageResultDTO(
+            path=str(temp_directories["uploaded"] / (filename or "test.jpg")),
+            image=ImageDTO(
+                id="upload-id",
+                filename=filename or "test.jpg",
+                format=output_format,
+                mode="RGB",
+                width=100,
+                height=100,
+                size_bytes=1024,
+                path=str(temp_directories["uploaded"] / (filename or "test.jpg")),
+                folder="uploaded",
+            ),
         )
     )
-    def get_image_dimensions_side_effect(image_name: str, folder: str = "uploaded"):
-        image_path = temp_directories.get(folder, temp_directories["uploaded"]) / image_name
-        return get_image_dimensions(image_path)
-
-    mock.get_image_dimensions.side_effect = get_image_dimensions_side_effect
     return mock
 
 
@@ -319,13 +233,36 @@ def mock_local_storage(temp_directories: Dict[str, Path]) -> Mock:
         file_path.touch()
         return str(file_path)
 
-    def get_side_effect(filename: str):
-        file_path = temp_directories["uploaded"] / filename
-        return open(file_path, "rb")
+    def read_side_effect(path):
+        return open(path, "rb")
+
+    def delete_side_effect(path):
+        file_path = Path(path)
+        if file_path.exists():
+            file_path.unlink()
+            return True
+        return False
+
+    def exists_side_effect(path):
+        return Path(path).is_file()
+
+    def destination_path_side_effect(source, target_folder):
+        return temp_directories[target_folder] / Path(source).name
+
+    def move_side_effect(source, target_folder):
+        source_path = Path(source)
+        dest = temp_directories[target_folder] / source_path.name
+        if source_path.exists():
+            dest.write_bytes(source_path.read_bytes())
+            source_path.unlink()
+        return str(dest)
 
     mock.save.side_effect = save_side_effect
-    mock.get.side_effect = get_side_effect
-    mock.delete.return_value = True
+    mock.read.side_effect = read_side_effect
+    mock.delete.side_effect = delete_side_effect
+    mock.exists.side_effect = exists_side_effect
+    mock.destination_path.side_effect = destination_path_side_effect
+    mock.move.side_effect = move_side_effect
     return mock
 
 
@@ -388,6 +325,33 @@ def mock_detection_service(temp_directories: Dict[str, Path]) -> Mock:
     from app.vision.inference.engine import EngineMetadata
 
     mock.engine = Mock()
+    detection_result = {
+        "image_with_boxes": str(temp_directories["detected"] / "test_bounding_boxes.jpg"),
+        "detections": mock_detections,
+        "model_name": "facebook/detr-resnet-50",
+        "model_version": None,
+    }
+    objects_result = {
+        "detections": mock_detections,
+        "model_name": "facebook/detr-resnet-50",
+        "model_version": None,
+    }
+
+    def _resolve_image_path(filename: str, folder: str = "uploaded") -> Path:
+        return temp_directories.get(folder, temp_directories["uploaded"]) / filename
+
+    def detect_for_filename_side_effect(filename: str, folder: str = "uploaded"):
+        if not _resolve_image_path(filename, folder).exists():
+            raise HTTPException(status_code=404, detail=f"Image {filename} not found in {folder}")
+        return detection_result
+
+    def get_detected_objects_for_filename_side_effect(filename: str, folder: str = "uploaded"):
+        if not _resolve_image_path(filename, folder).exists():
+            raise HTTPException(status_code=404, detail=f"Image {filename} not found in {folder}")
+        return objects_result
+
+    mock.detect_for_filename.side_effect = detect_for_filename_side_effect
+    mock.get_detected_objects_for_filename.side_effect = get_detected_objects_for_filename_side_effect
     mock.engine.metadata = EngineMetadata(
         model_name="facebook/detr-resnet-50",
         model_revision=None,
@@ -482,9 +446,6 @@ def test_client(mock_inference_engine) -> TestClient:
 @pytest.fixture
 def test_client_with_overrides(
     temp_directories: Dict[str, Path],
-    mock_directory_manager: Mock,
-    mock_file_path_resolver: Mock,
-    mock_image_validator: Mock,
     mock_local_storage: Mock,
     mock_image_edit_service: Mock,
     mock_image_service: Mock,
@@ -492,18 +453,6 @@ def test_client_with_overrides(
     mock_inference_engine: Mock,
 ) -> TestClient:
     """Create a FastAPI test client with dependency overrides."""
-    def override_get_directories():
-        return temp_directories
-
-    def override_get_directory_manager():
-        return mock_directory_manager
-
-    def override_get_file_path_resolver():
-        return mock_file_path_resolver
-
-    def override_get_simple_image_validator():
-        return mock_image_validator
-
     def override_get_local_image_storage():
         return mock_local_storage
 
@@ -516,10 +465,6 @@ def test_client_with_overrides(
     def override_get_object_detection_service():
         return mock_detection_service
 
-    app.dependency_overrides[get_directories] = override_get_directories
-    app.dependency_overrides[get_directory_manager] = override_get_directory_manager
-    app.dependency_overrides[get_file_path_resolver] = override_get_file_path_resolver
-    app.dependency_overrides[get_simple_image_validator] = override_get_simple_image_validator
     app.dependency_overrides[get_local_image_storage] = override_get_local_image_storage
     app.dependency_overrides[get_image_edit_service] = override_get_image_edit_service
     app.dependency_overrides[get_image_service] = override_get_image_service

@@ -3,7 +3,7 @@ Unit tests for ObjectDetectionService.
 """
 
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 from PIL import Image
 
 from app.vision.detection_service import ObjectDetectionService
@@ -15,11 +15,23 @@ class TestObjectDetectionService:
     """Test cases for ObjectDetectionService."""
 
     @pytest.fixture
-    def detection_service(self, mock_local_storage, mock_inference_engine):
+    def mock_image_repository(self):
+        mock = Mock()
+        mock.get_or_create_image_id.return_value = "output-id"
+        return mock
+
+    @pytest.fixture
+    def mock_image_service(self):
+        return Mock()
+
+    @pytest.fixture
+    def detection_service(self, mock_local_storage, mock_inference_engine, mock_image_service, mock_image_repository):
         """Create ObjectDetectionService with mocked dependencies."""
         return ObjectDetectionService(
             inference_engine=mock_inference_engine,
-            local_storage=mock_local_storage,
+            storage=mock_local_storage,
+            image_service=mock_image_service,
+            image_repository=mock_image_repository,
         )
 
     @pytest.fixture
@@ -64,8 +76,7 @@ class TestObjectDetectionService:
 
         detection_service.engine.predict.return_value = sample_result
 
-        def mock_save(file, folder, storage_id=None, format="JPEG"):
-            storage_id = storage_id or "output-id"
+        def mock_save(file, folder, storage_id, format="JPEG"):
             ext = ".jpg" if format.upper() == "JPEG" else f".{format.lower()}"
             output_path = temp_directories[folder] / f"{storage_id}{ext}"
             output_path.touch()
@@ -78,6 +89,7 @@ class TestObjectDetectionService:
         assert output_path is not None
         assert "bounding_boxes" in output_path or "detected" in output_path
         detection_service.engine.predict.assert_called_once()
+        detection_service.image_repository.upsert_record.assert_called_once()
 
     def test_detect_with_visualization_single_inference(
         self, detection_service, temp_directories, sample_result, mock_local_storage
@@ -89,8 +101,7 @@ class TestObjectDetectionService:
 
         detection_service.engine.predict.return_value = sample_result
 
-        def mock_save(file, folder, storage_id=None, format="JPEG"):
-            storage_id = storage_id or "output-id"
+        def mock_save(file, folder, storage_id, format="JPEG"):
             ext = ".jpg" if format.upper() == "JPEG" else f".{format.lower()}"
             output_path = temp_directories[folder] / f"{storage_id}{ext}"
             output_path.touch()

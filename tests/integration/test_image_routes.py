@@ -79,20 +79,6 @@ class TestImageRoutes:
         
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_get_image_dimensions(self, test_client_with_overrides, temp_directories):
-        """Test getting image dimensions."""
-        # Create test image
-        img_path = temp_directories["uploaded"] / "test_dim.jpg"
-        img = Image.new('RGB', (1920, 1080), color='blue')
-        img.save(img_path, format="JPEG")
-        
-        response = test_client_with_overrides.get("/images/test_dim.jpg/dimensions?folder=uploaded")
-        
-        assert response.status_code == status.HTTP_200_OK
-        data = response.json()
-        assert data["width"] == 1920
-        assert data["height"] == 1080
-
     def test_delete_image_success(self, test_client_with_overrides, temp_directories):
         """Test successful image deletion."""
         img_path = temp_directories["uploaded"] / "test_delete.jpg"

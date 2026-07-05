@@ -1,8 +1,6 @@
 from fastapi import Request, Depends
-from pathlib import Path
 
-from app.core.dependencies import get_directories
-from app.dependencies.utils import get_directory_manager, get_file_path_resolver
+from app.core.config import Settings, get_settings
 from app.dependencies.repositories import get_image_repository
 from app.dependencies.storage import get_local_image_storage
 from app.media.repository import ImageRepository
@@ -10,31 +8,26 @@ from app.editing.image_editor import ImageEditService
 from app.media.service import ImageService
 from app.vision.detection_service import ObjectDetectionService
 from app.vision.inference.engine import InferenceEngine
-from app.storage.local_storage import LocalImageStorage
-from app.media.utils.directory_utils import DirectoryManager
-from app.media.utils.file_utils import FilePathResolver
+from app.storage.base_storage import BaseImageStorage
 
 
 def get_image_service(
-    local_storage: LocalImageStorage = Depends(get_local_image_storage),
-    directory_manager: DirectoryManager = Depends(get_directory_manager),
-    file_resolver: FilePathResolver = Depends(get_file_path_resolver),
-    directories: dict[str, Path] = Depends(get_directories),
     image_repository: ImageRepository = Depends(get_image_repository),
+    storage: BaseImageStorage = Depends(get_local_image_storage),
+    settings: Settings = Depends(get_settings),
 ) -> ImageService:
     return ImageService(
-        local_storage=local_storage,
-        directory_manager=directory_manager,
-        file_resolver=file_resolver,
-        directories=directories,
-        image_repository=image_repository,
+        repository=image_repository,
+        storage=storage,
+        format_extensions=settings.format_extensions,
     )
 
 
 def get_object_detection_service(
     request: Request,
-    local_storage: LocalImageStorage = Depends(get_local_image_storage),
+    storage: BaseImageStorage = Depends(get_local_image_storage),
     image_service: ImageService = Depends(get_image_service),
+    image_repository: ImageRepository = Depends(get_image_repository),
 ) -> ObjectDetectionService:
     inference_engine: InferenceEngine | None = getattr(request.app.state, "inference_engine", None)
     if inference_engine is None:
@@ -42,16 +35,19 @@ def get_object_detection_service(
 
     return ObjectDetectionService(
         inference_engine=inference_engine,
-        local_storage=local_storage,
+        storage=storage,
         image_service=image_service,
+        image_repository=image_repository,
     )
 
 
 def get_image_edit_service(
     image_service: ImageService = Depends(get_image_service),
-    local_storage: LocalImageStorage = Depends(get_local_image_storage),
+    image_repository: ImageRepository = Depends(get_image_repository),
+    storage: BaseImageStorage = Depends(get_local_image_storage),
 ) -> ImageEditService:
     return ImageEditService(
         image_service=image_service,
-        local_storage=local_storage,
+        image_repository=image_repository,
+        storage=storage,
     )

@@ -1,16 +1,10 @@
-import time
 import asyncio
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 
 from app.core.rate_limiting import limiter
-from app.core.logging_config import get_logger
-from app.dependencies.utils import get_file_path_resolver
 from app.dependencies.services import get_object_detection_service
 from app.vision.detection_service import ObjectDetectionService
-from app.media.utils.file_utils import FilePathResolver
 from app.vision.schema import BoundingBoxResponse, DetectedObjectsResponse, DetectionBox
-
-logger = get_logger("detection_routes")
 
 router = APIRouter(prefix="/images/{filename}/detections", tags=["Image Detections"])
 
@@ -21,21 +15,10 @@ async def create_detection_with_visualization(
     request: Request,
     filename: str,
     service: ObjectDetectionService = Depends(get_object_detection_service),
-    file_resolver: FilePathResolver = Depends(get_file_path_resolver),
+    folder: str = Query("uploaded", description="The folder containing the image (defaults to 'uploaded')."),
 ):
     """Run DETR detection and save an annotated image with bounding boxes."""
-    start_time = time.time()
-    logger.info(f"Request to detect bounding boxes for image: {filename}")
-
-    image_path = await asyncio.to_thread(file_resolver.find_and_validate_image, filename)
-
-    logger.info(f"Processing image for bounding boxes: {filename}")
-    data = await asyncio.to_thread(service.detect_with_visualization, image_path, filename)
-
-    execution_time = time.time() - start_time
-    logger.info(
-        f"Successfully detected bounding boxes for image: {filename}, Execution Time: {execution_time:.2f}s"
-    )
+    data = await asyncio.to_thread(service.detect_for_filename, filename, folder)
 
     return BoundingBoxResponse(
         message="Bounding boxes drawn successfully",
@@ -52,21 +35,10 @@ async def list_detections(
     request: Request,
     filename: str,
     service: ObjectDetectionService = Depends(get_object_detection_service),
-    file_resolver: FilePathResolver = Depends(get_file_path_resolver),
+    folder: str = Query("uploaded", description="The folder containing the image (defaults to 'uploaded')."),
 ):
     """Run DETR detection and return label/confidence/box metadata only."""
-    start_time = time.time()
-    logger.info(f"Request to retrieve detected objects for image: {filename}")
-
-    image_path = await asyncio.to_thread(file_resolver.find_and_validate_image, filename)
-
-    logger.info(f"Retrieving detected objects for image: {filename}")
-    summary = await asyncio.to_thread(service.get_detected_objects, image_path)
-
-    execution_time = time.time() - start_time
-    logger.info(
-        f"Successfully retrieved detected objects for image: {filename}, Execution Time: {execution_time:.2f}s"
-    )
+    summary = await asyncio.to_thread(service.get_detected_objects_for_filename, filename, folder)
 
     return DetectedObjectsResponse(
         message="Detected objects retrieved successfully",
