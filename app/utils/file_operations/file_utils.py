@@ -1,19 +1,18 @@
 from pathlib import Path
-from typing import Dict, Optional
-from fastapi import HTTPException, status, Depends
+from fastapi import HTTPException, status
 
 from app.core.logging_config import get_logger
-from app.core.dependencies import get_directories
 
 logger = get_logger("file_utils")
 
 
 class FilePathResolver:
-    def __init__(self, directories: Dict[str, Path]):
+    
+    def __init__(self, directories: dict[str, Path]):
         self.directories = directories
         logger.info("FileFinder initialized with directories: %s", self.directories)
 
-    def _get_existing_file_path(self, filename: str) -> Optional[Path]:
+    def _get_existing_file_path(self, filename: str) -> Path | None:
         for directory in self.directories.values():
             file_path = directory / filename
             if file_path.is_file():
@@ -48,10 +47,3 @@ class FilePathResolver:
                     detail=f"Image '{image_name}' not found",
                 )
             raise
-
-
-def get_file_path_resolver(
-    directories: Dict[str, Path] = Depends(get_directories),
-) -> FilePathResolver:
-    logger.debug("Creating FilePathResolver instance with directories: %s", directories)
-    return FilePathResolver(directories=directories)
