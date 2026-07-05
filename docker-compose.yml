@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   app:
     build:
@@ -13,9 +11,8 @@ services:
       - image_edited:/app/app/static/edited
       - image_detected:/app/app/static/detected
       - app_logs:/app/logs
-    environment:
-      - DEBUG=False
-      - LOG_LEVEL=INFO
+    env_file:
+      - .env
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
