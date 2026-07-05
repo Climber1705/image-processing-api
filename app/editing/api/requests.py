@@ -10,7 +10,3 @@ class SharpenEditRequest(BaseModel):
     factor: float = Field(1.5, gt=0)
     radius: float = Field(2.0, gt=0)
     threshold: int = Field(2, ge=0)
-
-
-class EditResponse(BaseModel):
-    path: str
