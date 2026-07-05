@@ -7,6 +7,9 @@ from transformers import DetrForObjectDetection, DetrImageProcessor
 
 from app.core.config import Settings
 from app.core.logging_config import get_logger
+from app.services.inference.postprocessor import postprocess
+from app.services.inference.preprocessor import preprocess
+from app.services.inference.schemas import DetectionResult
 
 logger = get_logger("inference_engine")
 
@@ -24,12 +27,15 @@ class InferenceEngine:
         model: DetrForObjectDetection,
         metadata: EngineMetadata,
         device: str = "cpu",
+        max_image_dimension: int = 1333,
     ) -> None:
         self.processor = processor
         self.model = model
         self.metadata = metadata
         self.device = device
+        self.max_image_dimension = max_image_dimension
         self._warmed_up = False
+        self._inference_count = 0
 
         self.model.to(device)
         self.model.eval()
@@ -59,12 +65,12 @@ class InferenceEngine:
                 model_revision=settings.MODEL_REVISION,
             ),
             device=settings.INFERENCE_DEVICE,
+            max_image_dimension=settings.MAX_IMAGE_DIMENSION,
         )
 
     def warmup(self) -> None:
         dummy = Image.new("RGB", (64, 64), color=(0, 0, 0))
-        inputs = self.processor(images=dummy, return_tensors="pt")
-        inputs = {key: value.to(self.device) for key, value in inputs.items()}
+        inputs = preprocess(dummy, self.processor, self.device)
 
         with torch.inference_mode():
             self.model(**inputs)
@@ -72,6 +78,39 @@ class InferenceEngine:
         self._warmed_up = True
         logger.info("Inference engine warmup complete")
 
+    def mark_ready(self) -> None:
+        self._warmed_up = True
+
+    def predict(self, image: Image.Image, confidence_threshold: float) -> DetectionResult:
+        inputs = preprocess(
+            image,
+            self.processor,
+            self.device,
+            max_dimension=self.max_image_dimension,
+        )
+
+        with torch.inference_mode():
+            outputs = self.model(**inputs)
+            self._inference_count += 1
+
+        detections = postprocess(
+            outputs,
+            self.processor,
+            image.size,
+            self.model.config.id2label,
+            confidence_threshold,
+        )
+
+        return DetectionResult(
+            detections=detections,
+            model_name=self.metadata.model_name,
+            model_version=self.metadata.model_revision,
+        )
+
     @property
     def is_ready(self) -> bool:
         return self._warmed_up
+
+    @property
+    def inference_count(self) -> int:
+        return self._inference_count
