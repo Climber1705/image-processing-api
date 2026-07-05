@@ -1,6 +1,5 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
-from starlette import status
 
 from app.core.logging_config import get_logger
 from app.vision.domain.errors import (
