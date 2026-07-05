@@ -2,19 +2,18 @@ import os
 from io import BytesIO
 from tempfile import SpooledTemporaryFile
 
-from fastapi import Depends, Request, UploadFile
+from fastapi import UploadFile
 from PIL import Image
-from typing import Annotated, Any
+from typing import Any
 
 from app.core.config import settings
-from app.services.image.storage.local_storage import LocalImageStorage, get_local_image_storage
+from app.services.image.storage.local_storage import LocalImageStorage
 from app.services.inference.engine import InferenceEngine
 from app.services.inference.preprocessor import load_image
 from app.services.inference.schemas import DetectionResult
 from app.services.inference.visualizer import draw_bounding_boxes
 from app.core.logging_config import get_logger
 
-LocalImageStorageDep = Annotated[LocalImageStorage, Depends(get_local_image_storage)]
 
 logger = get_logger("detection_service")
 
@@ -91,17 +90,3 @@ class ObjectDetectionService:
         result, _ = self._predict(image_path)
         logger.info(f"Detected {len(result.detections)} objects.")
         return result.to_dict_list()
-
-
-def get_object_detection_service(
-    request: Request,
-    local_storage: LocalImageStorageDep,
-) -> ObjectDetectionService:
-    inference_engine: InferenceEngine | None = getattr(request.app.state, "inference_engine", None)
-    if inference_engine is None:
-        raise RuntimeError("Inference engine is not initialized")
-
-    return ObjectDetectionService(
-        inference_engine=inference_engine,
-        local_storage=local_storage,
-    )
