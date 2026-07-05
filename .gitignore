@@ -8,6 +8,9 @@ __pycache__/
 # Ignore .env file
 .env
 
+# Internal README rewrite notes (not for publication)
+README_NOTES.md
+
 # Ignore pytest cache, coverage, and htmlcov
 .pytest_cache/
 .coverage
