@@ -1,9 +1,11 @@
 from app.vision.api.responses import (
-    BoundingBoxResponse,
-    DetectedObjectsResponse,
     DetectionBox,
+    InferenceDetectResponse,
+    InferenceDetectVisualizeResponse,
+    ModelInfoResponse,
 )
-from app.vision.domain.dtos import DetectionsResultDTO, DetectResponseDTO
+from app.vision.domain.dtos import DetectResponseDTO
+from app.vision.inference.engine import InferenceEngine
 
 
 def _to_detection_boxes(detections) -> list[DetectionBox]:
@@ -13,10 +15,9 @@ def _to_detection_boxes(detections) -> list[DetectionBox]:
     ]
 
 
-def to_bounding_box_response(result: DetectResponseDTO) -> BoundingBoxResponse:
-    return BoundingBoxResponse(
-        message="Bounding boxes drawn successfully",
-        image_path=result.image_path,
+def to_inference_detect_response(result: DetectResponseDTO) -> InferenceDetectResponse:
+    return InferenceDetectResponse(
+        message="Detection completed successfully",
         detections=_to_detection_boxes(result.detections),
         model_name=result.metadata.model_name,
         model_version=result.metadata.model_version,
@@ -24,11 +25,24 @@ def to_bounding_box_response(result: DetectResponseDTO) -> BoundingBoxResponse:
     )
 
 
-def to_detected_objects_response(result: DetectionsResultDTO) -> DetectedObjectsResponse:
-    return DetectedObjectsResponse(
-        message="Detected objects retrieved successfully",
-        detected_objects=_to_detection_boxes(result.detections),
+def to_inference_visualize_response(
+    result: DetectResponseDTO,
+) -> InferenceDetectVisualizeResponse:
+    return InferenceDetectVisualizeResponse(
+        message="Detection with visualization completed successfully",
+        detections=_to_detection_boxes(result.detections),
         model_name=result.metadata.model_name,
         model_version=result.metadata.model_version,
         detection_count=len(result.detections),
+        image_path=result.image_path,
+        annotated_image_base64=result.annotated_image_base64,
+    )
+
+
+def from_engine_metadata(engine: InferenceEngine) -> ModelInfoResponse:
+    return ModelInfoResponse(
+        model_name=engine.metadata.model_name,
+        model_version=engine.metadata.model_revision,
+        is_ready=engine.is_ready,
+        inference_count=engine.inference_count,
     )

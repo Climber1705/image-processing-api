@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     INFERENCE_DEVICE: str = "cpu"
     MAX_IMAGE_DIMENSION: int = 1333
     WARMUP_ON_STARTUP: bool = True
+    MAX_CONCURRENT_INFERENCES: int = 2
 
     FORMAT_EXTENSIONS: dict[str, str] = {
         "JPEG": ".jpg",

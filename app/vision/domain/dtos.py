@@ -22,4 +22,5 @@ class DetectionsResultDTO:
 
 @dataclass(frozen=True, slots=True)
 class DetectResponseDTO(DetectionsResultDTO):
-    image_path: str
+    image_path: str | None = None
+    annotated_image_base64: str | None = None

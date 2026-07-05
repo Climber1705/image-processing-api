@@ -1,3 +1,4 @@
+import base64
 from io import BytesIO
 from pathlib import Path
 
@@ -10,14 +11,14 @@ from app.media.domain.errors import ImageNotFoundError
 from app.media.repository import ImageRepository
 from app.media.service import ImageService
 from app.storage.base_storage import BaseImageStorage
-from app.vision.domain.dtos import DetectionsResultDTO, DetectResponseDTO
+from app.vision.domain.dtos import DetectResponseDTO
 from app.vision.domain.errors import (
     CorruptImageError,
     InferenceError,
     ModelNotReadyError,
 )
 from app.vision.inference.engine import InferenceEngine
-from app.vision.inference.mappers import to_detect_response_dto, to_detections_result_dto
+from app.vision.inference.mappers import to_detect_response_dto
 from app.vision.inference.schemas import DetectionResult
 from app.vision.inference.visualizer import draw_bounding_boxes
 
@@ -71,21 +72,44 @@ class InferenceService:
         except (UnidentifiedImageError, OSError, ValueError) as exc:
             raise CorruptImageError(f"Image file is corrupt or unreadable: {path.name}") from exc
 
-    def _run_inference(self, image_path: str) -> tuple[DetectionResult, Image.Image]:
-        self._ensure_ready()
-        image = self._load_and_validate_image(image_path)
+    def _load_and_validate_from_bytes(self, data: bytes, label: str) -> Image.Image:
+        if not data:
+            raise CorruptImageError(f"Image file is empty: {label}")
+
         try:
-            result = self.engine.predict(image, self.confidence_threshold)
+            with Image.open(BytesIO(data)) as img:
+                img.verify()
+        except (UnidentifiedImageError, OSError, SyntaxError) as exc:
+            raise CorruptImageError(f"Image file is corrupt or unreadable: {label}") from exc
+
+        try:
+            with Image.open(BytesIO(data)) as img:
+                if img.width <= 0 or img.height <= 0:
+                    raise CorruptImageError(f"Image has invalid dimensions: {label}")
+                return img.convert("RGB")
+        except CorruptImageError:
+            raise
+        except (UnidentifiedImageError, OSError, ValueError) as exc:
+            raise CorruptImageError(f"Image file is corrupt or unreadable: {label}") from exc
+
+    def _predict(self, image: Image.Image, source_label: str = "image") -> DetectionResult:
+        self._ensure_ready()
+        try:
+            return self.engine.predict(image, self.confidence_threshold)
         except Exception as exc:
-            logger.error("Inference failed for %s: %s", image_path, exc)
+            logger.error("Inference failed for %s: %s", source_label, exc)
             raise InferenceError(f"Inference failed: {exc}") from exc
-        return result, image
 
     def _image_to_bytesio(self, image: Image.Image) -> BytesIO:
         img_byte_arr = BytesIO()
         image.save(img_byte_arr, format=image.format or "PNG")
         img_byte_arr.seek(0)
         return img_byte_arr
+
+    def _encode_image_base64(self, image: Image.Image) -> str:
+        buffer = BytesIO()
+        image.save(buffer, format=image.format or "PNG")
+        return base64.b64encode(buffer.getvalue()).decode("ascii")
 
     def _persist_annotation(self, annotated: Image.Image, source_filename: str) -> str:
         source_stem = Path(source_filename).stem
@@ -111,24 +135,62 @@ class InferenceService:
         )
         return output_path
 
-    def detect_for_filename(self, filename: str, folder: str = ImageFolder.UPLOADED) -> DetectResponseDTO:
-        image_path = str(self.image_service.get_image_path(filename, folder))
-        return self.detect_with_visualization(image_path, filename)
-
-    def get_detected_objects_for_filename(
+    def detect(
         self,
-        filename: str,
-        folder: str = ImageFolder.UPLOADED,
-    ) -> DetectionsResultDTO:
-        image_path = str(self.image_service.get_image_path(filename, folder))
-        return self.get_detected_objects(image_path)
+        image: bytes,
+        *,
+        visualize: bool = False,
+        persist: bool = False,
+        source_filename: str = "image.jpg",
+    ) -> DetectResponseDTO:
+        pil = self._load_and_validate_from_bytes(image, source_filename)
+        return self.detect_from_image(
+            pil,
+            visualize=visualize,
+            persist=persist,
+            source_filename=source_filename,
+        )
 
-    def detect_with_visualization(self, image_path: str, source_filename: str) -> DetectResponseDTO:
-        result, image = self._run_inference(image_path)
+    def detect_from_path(
+        self,
+        image_path: str,
+        *,
+        visualize: bool = False,
+        persist: bool = False,
+        source_filename: str | None = None,
+    ) -> DetectResponseDTO:
+        pil = self._load_and_validate_image(image_path)
+        filename = source_filename or Path(image_path).name
+        return self.detect_from_image(
+            pil,
+            visualize=visualize,
+            persist=persist,
+            source_filename=filename,
+        )
+
+    def detect_from_image(
+        self,
+        image: Image.Image,
+        visualize: bool = False,
+        persist: bool = False,
+        source_filename: str = "image.jpg",
+    ) -> DetectResponseDTO:
+        result = self._predict(image, source_label=source_filename)
+
+        if not visualize:
+            return to_detect_response_dto(result)
+
         annotated = draw_bounding_boxes(image, result.detections)
-        output_path = self._persist_annotation(annotated, source_filename)
-        return to_detect_response_dto(result, output_path)
+        image_path: str | None = None
+        annotated_image_base64: str | None = None
 
-    def get_detected_objects(self, image_path: str) -> DetectionsResultDTO:
-        result, _ = self._run_inference(image_path)
-        return to_detections_result_dto(result)
+        if persist:
+            image_path = self._persist_annotation(annotated, source_filename)
+        else:
+            annotated_image_base64 = self._encode_image_base64(annotated)
+
+        return to_detect_response_dto(
+            result,
+            image_path=image_path,
+            annotated_image_base64=annotated_image_base64,
+        )

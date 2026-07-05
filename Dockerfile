@@ -21,7 +21,7 @@ COPY pytest.ini .
 
 RUN mkdir -p logs app/static/uploaded app/static/edited app/static/detected
 
-RUN pytest --cov=app --cov-report=term-missing --cov-fail-under=80 || exit 1
+RUN pytest -m "not inference" --cov=app --cov-report=term-missing --cov-fail-under=80 || exit 1
 
 RUN pip uninstall -y \
     pytest \

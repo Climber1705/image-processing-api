@@ -64,10 +64,15 @@ def to_detections_result_dto(result: DetectionResult) -> DetectionsResultDTO:
     )
 
 
-def to_detect_response_dto(result: DetectionResult, image_path: str) -> DetectResponseDTO:
+def to_detect_response_dto(
+    result: DetectionResult,
+    image_path: str | None = None,
+    annotated_image_base64: str | None = None,
+) -> DetectResponseDTO:
     base = to_detections_result_dto(result)
     return DetectResponseDTO(
         image_path=image_path,
+        annotated_image_base64=annotated_image_base64,
         detections=base.detections,
         metadata=base.metadata,
     )
