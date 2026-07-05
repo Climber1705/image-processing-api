@@ -9,7 +9,7 @@ from PIL import Image
 from pathlib import Path
 
 from app.media.crud_operations import ImageCRUDService
-from app.schemas.image.image_responses import ImageListItem
+from app.media.schema import ImageListItem
 
 
 @pytest.mark.unit

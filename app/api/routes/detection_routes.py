@@ -8,7 +8,7 @@ from app.dependencies.utils import get_file_path_resolver
 from app.dependencies.services import get_object_detection_service
 from app.vision.detection_service import ObjectDetectionService
 from app.media.utils.file_utils import FilePathResolver
-from app.schemas.detection.detection_responses import BoundingBoxResponse, DetectedObjectsResponse, DetectionBox
+from app.vision.schema import BoundingBoxResponse, DetectedObjectsResponse, DetectionBox
 
 logger = get_logger("detection_routes")
 

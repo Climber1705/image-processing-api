@@ -5,8 +5,7 @@ from app.core.rate_limiting import limiter
 from app.core.logging_config import get_logger
 from app.dependencies.services import get_image_edit_service
 from app.editing.image_editor import ImageEditService
-from app.schemas.editing.editing_requests import RotateEditRequest, SharpenEditRequest
-from app.schemas.editing.editing_responses import EditResponse
+from app.editing.schema import RotateEditRequest, SharpenEditRequest, EditResponse
 
 logger = get_logger("editing_routes")
 

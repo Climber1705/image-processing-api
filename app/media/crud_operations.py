@@ -7,7 +7,7 @@ from app.media.utils.directory_utils import DirectoryManager
 from app.media.utils.file_utils import FilePathResolver
 from app.media.metadata_handler import ImageMetadataExtractor
 from app.core.logging_config import get_logger
-from app.schemas.image.image_responses import ImageListItem
+from app.media.schema import ImageListItem
 
 
 logger = get_logger("crud_operations")
