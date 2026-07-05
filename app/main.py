@@ -3,11 +3,10 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from app.api.exception_handlers import media_domain_error_handler
 from app.api.routes import router
 from app.core.lifespan import lifespan
 from app.core.rate_limiting import limiter
-from app.media.errors import MediaDomainError
+from app.media.handlers import register_media_exception_handlers
 
 description = """
 Upload, manage, and process images.
@@ -24,7 +23,7 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.add_exception_handler(MediaDomainError, media_domain_error_handler)
+register_media_exception_handlers(app)
 app.add_middleware(SlowAPIMiddleware)
 
 app.include_router(router)
