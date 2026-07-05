@@ -4,18 +4,17 @@ from fastapi import APIRouter, Request, UploadFile, HTTPException, status, Depen
 from app.core.rate_limiting import limiter
 from app.core.logging_config import get_logger
 from app.dependencies.services import get_image_service
-from app.dependencies.utils import get_simple_image_validator
+from app.dependencies.validation import get_simple_image_validator
 from app.media.service import ImageService
 from app.media.schema import (
     ImageDetailResponse,
-    ImageDimensionsResponse,
     ImageListItem,
     ImageMetadata,
     ImageResponse,
     MoveImageRequest,
     StatusResponse,
 )
-from app.media.utils.validator.simple_validator import SimpleImageValidator
+from app.validation.simple_validator import SimpleImageValidator
 
 logger = get_logger("image_routes")
 
@@ -98,20 +97,6 @@ async def get_image(
     """Get metadata for a single image."""
     logger.info(f"Fetching details for image: {filename} in folder: {folder}")
     return await asyncio.to_thread(image_service.get_image_by_id, filename, folder)
-
-
-@router.get("/{filename}/dimensions", response_model=ImageDimensionsResponse)
-@limiter.limit("20/minute")
-async def get_image_dimensions(
-    request: Request,
-    filename: str,
-    image_service: ImageService = Depends(get_image_service),
-    folder: str = Query("uploaded", description="The folder containing the image (defaults to 'uploaded')."),
-):
-    """Get width and height for an image."""
-    logger.info(f"Fetching dimensions for image: {filename} in folder: {folder}")
-    width, height = await asyncio.to_thread(image_service.get_image_dimensions, filename, folder)
-    return ImageDimensionsResponse(width=width, height=height)
 
 
 @router.delete("/{filename}", response_model=StatusResponse)

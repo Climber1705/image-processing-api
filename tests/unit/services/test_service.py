@@ -9,6 +9,7 @@ from PIL import Image
 from pathlib import Path
 
 from app.media.service import ImageService
+from app.storage.local_storage import LocalImageStorage
 from app.media.schema import ImageListItem
 
 
@@ -34,19 +35,16 @@ class TestImageService:
         return repo
 
     @pytest.fixture
-    def image_service(self, temp_directories, mock_repository):
-        mock_dir_manager = Mock()
-        mock_dir_manager.get_directory.side_effect = lambda folder: temp_directories.get(folder)
-
-        mock_file_resolver = Mock()
-        mock_local_storage = Mock()
+    def image_service(self, temp_directories, mock_repository, mock_image_validator):
+        storage = LocalImageStorage(
+            directories=temp_directories,
+            format_helper=mock_image_validator,
+        )
 
         return ImageService(
-            local_storage=mock_local_storage,
-            directory_manager=mock_dir_manager,
-            file_resolver=mock_file_resolver,
-            directories=temp_directories,
             image_repository=mock_repository,
+            storage=storage,
+            validator=mock_image_validator,
         )
 
     def _make_record(self, filename, folder, path, width=100, height=100):
@@ -65,17 +63,6 @@ class TestImageService:
     def test_get_folder_names(self, image_service):
         assert image_service._get_folder_names("uploaded") == ["uploaded"]
         assert image_service._get_folder_names("all") == ["uploaded", "edited", "detected"]
-
-    def test_get_image_dimensions_from_db(self, image_service, mock_repository, temp_directories):
-        image_path = temp_directories["uploaded"] / "test_dim.jpg"
-        record = self._make_record("test_dim.jpg", "uploaded", image_path, width=1920, height=1080)
-        mock_repository.get_by_filename.return_value = record
-
-        width, height = image_service.get_image_dimensions("test_dim.jpg", "uploaded")
-
-        assert width == 1920
-        assert height == 1080
-        mock_repository.get_by_filename.assert_called_once_with("test_dim.jpg", "uploaded")
 
     def test_list_images_from_db(self, image_service, mock_repository):
         record = self._make_record("listed.jpg", "uploaded", "/tmp/listed.jpg")

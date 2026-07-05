@@ -7,7 +7,7 @@ from io import BytesIO
 from fastapi import HTTPException, UploadFile
 from PIL import Image
 
-from app.media.utils.validator.simple_validator import SimpleImageValidator
+from app.validation.simple_validator import SimpleImageValidator
 
 
 @pytest.mark.unit

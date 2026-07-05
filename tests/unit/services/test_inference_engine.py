@@ -114,10 +114,12 @@ class TestInferenceEngine:
     ):
         request = Mock()
         request.app.state.inference_engine = mock_inference_engine
+        mock_image_service = Mock()
 
         service = get_object_detection_service(
             request=request,
-            local_storage=mock_local_storage,
+            storage=mock_local_storage,
+            image_service=mock_image_service,
         )
 
         assert service.engine is mock_inference_engine

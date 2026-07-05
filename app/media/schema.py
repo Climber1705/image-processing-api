@@ -46,8 +46,3 @@ class ImageDetailResponse(BaseModel):
     size_bytes: int
     path: str
     url: Optional[str] = None
-
-
-class ImageDimensionsResponse(BaseModel):
-    width: int
-    height: int

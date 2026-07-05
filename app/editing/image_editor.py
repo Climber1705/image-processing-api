@@ -6,7 +6,7 @@ from typing import Any, Callable, Optional
 
 from app.core.logging_config import get_logger
 from app.media.service import ImageService
-from app.storage.local_storage import LocalImageStorage
+from app.storage.base_storage import BaseImageStorage
 
 logger = get_logger("image_editor")
 
@@ -15,10 +15,10 @@ class ImageEditService:
     def __init__(
         self,
         image_service: ImageService,
-        local_storage: LocalImageStorage,
+        storage: BaseImageStorage,
     ):
         self.image_service = image_service
-        self.local_storage = local_storage
+        self.storage = storage
 
     def _build_display_filename(self, image_name: str, suffix: Optional[str] = None) -> str:
         path = Path(image_name)
@@ -46,7 +46,7 @@ class ImageEditService:
                 img_byte_arr = BytesIO()
                 processed_img.save(img_byte_arr, format=save_format.upper())
                 img_byte_arr.seek(0)
-                output_path = self.local_storage.save(
+                output_path = self.storage.save(
                     file=img_byte_arr,
                     folder="edited",
                     storage_id=storage_id,

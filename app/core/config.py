@@ -1,7 +1,7 @@
 import os
 import logging
-from functools import lru_cache
 from pathlib import Path
+from functools import lru_cache
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -44,13 +44,30 @@ class Settings(BaseSettings):
     MAX_IMAGE_DIMENSION: int = 1333
     WARMUP_ON_STARTUP: bool = True
 
+    FORMAT_EXTENSIONS: dict[str, str] = {
+        "JPEG": ".jpg",
+        "JPG": ".jpg",
+        "PNG": ".png",
+        "GIF": ".gif",  
+        "BMP": ".bmp",
+        "TIFF": ".tiff",
+        "WEBP": ".webp",
+    }
+
     @property
     def directories(self) -> dict[str, Path]:
-        return {
+        dirs = {
             "uploaded": self.UPLOADED_FOLDER,
             "edited": self.EDITED_FOLDER,
             "detected": self.DETECTED_FOLDER,
         }
+        logger.debug("Configured directories: %s", dirs)
+        return dirs
+
+    @property
+    def format_extensions(self) -> dict[str, str]:
+        logger.debug("Supported format extensions: %s", self.FORMAT_EXTENSIONS)
+        return self.FORMAT_EXTENSIONS
 
     def setup(self) -> None:
         for path in [self.UPLOADED_FOLDER, self.EDITED_FOLDER, self.DETECTED_FOLDER]:

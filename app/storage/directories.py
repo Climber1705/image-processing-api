@@ -1,9 +1,10 @@
 from pathlib import Path
+
 from fastapi import HTTPException, status
 
 from app.core.logging_config import get_logger
 
-logger = get_logger("directory_utils")
+logger = get_logger("directories")
 
 
 class DirectoryManager:

@@ -22,20 +22,13 @@ from fastapi import UploadFile, HTTPException, status
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.core.dependencies import get_directories
-from app.media.utils.directory_utils import DirectoryManager
-from app.media.utils.file_utils import FilePathResolver
-from app.media.utils.validator.simple_validator import SimpleImageValidator
+from app.storage.directories import DirectoryManager
+from app.validation.simple_validator import SimpleImageValidator
 from app.storage.local_storage import LocalImageStorage
 from app.media.service import ImageService
-from app.media.metadata import get_image_dimensions, get_image_metadata
 from app.editing.image_editor import ImageEditService
 from app.vision.detection_service import ObjectDetectionService
-from app.dependencies.utils import (
-    get_directory_manager,
-    get_file_path_resolver,
-    get_simple_image_validator,
-)
+from app.dependencies.validation import get_simple_image_validator
 from app.dependencies.storage import get_local_image_storage
 from app.dependencies.services import (
     get_image_edit_service,
@@ -79,27 +72,6 @@ def mock_directory_manager(temp_directories: Dict[str, Path]) -> Mock:
     mock.get_directory.side_effect = lambda folder: temp_directories.get(folder)
     mock.validate_folder.side_effect = lambda folder: folder in temp_directories
     return mock
-
-
-@pytest.fixture
-def mock_file_path_resolver(temp_directories: Dict[str, Path]) -> Mock:
-    """Create a mock FilePathResolver."""
-    mock = Mock(spec=FilePathResolver)
-    
-    def find_file_side_effect(filename: str) -> Path:
-        for dir_path in temp_directories.values():
-            file_path = dir_path / filename
-            if file_path.exists():
-                return file_path
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"No file named '{filename}' exists"
-        )
-    
-    mock.find_file.side_effect = find_file_side_effect
-    mock.find_and_validate_image.side_effect = lambda name: str(find_file_side_effect(name))
-    return mock
-
 
 @pytest.fixture
 def mock_image_validator() -> Mock:
@@ -298,11 +270,6 @@ def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mo
             },
         )
     )
-    def get_image_dimensions_side_effect(image_name: str, folder: str = "uploaded"):
-        image_path = temp_directories.get(folder, temp_directories["uploaded"]) / image_name
-        return get_image_dimensions(image_path)
-
-    mock.get_image_dimensions.side_effect = get_image_dimensions_side_effect
     return mock
 
 
@@ -319,13 +286,36 @@ def mock_local_storage(temp_directories: Dict[str, Path]) -> Mock:
         file_path.touch()
         return str(file_path)
 
-    def get_side_effect(filename: str):
-        file_path = temp_directories["uploaded"] / filename
-        return open(file_path, "rb")
+    def read_side_effect(path):
+        return open(path, "rb")
+
+    def delete_side_effect(path):
+        file_path = Path(path)
+        if file_path.exists():
+            file_path.unlink()
+            return True
+        return False
+
+    def exists_side_effect(path):
+        return Path(path).is_file()
+
+    def destination_path_side_effect(source, target_folder):
+        return temp_directories[target_folder] / Path(source).name
+
+    def move_side_effect(source, target_folder):
+        source_path = Path(source)
+        dest = temp_directories[target_folder] / source_path.name
+        if source_path.exists():
+            dest.write_bytes(source_path.read_bytes())
+            source_path.unlink()
+        return str(dest)
 
     mock.save.side_effect = save_side_effect
-    mock.get.side_effect = get_side_effect
-    mock.delete.return_value = True
+    mock.read.side_effect = read_side_effect
+    mock.delete.side_effect = delete_side_effect
+    mock.exists.side_effect = exists_side_effect
+    mock.destination_path.side_effect = destination_path_side_effect
+    mock.move.side_effect = move_side_effect
     return mock
 
 
@@ -388,6 +378,33 @@ def mock_detection_service(temp_directories: Dict[str, Path]) -> Mock:
     from app.vision.inference.engine import EngineMetadata
 
     mock.engine = Mock()
+    detection_result = {
+        "image_with_boxes": str(temp_directories["detected"] / "test_bounding_boxes.jpg"),
+        "detections": mock_detections,
+        "model_name": "facebook/detr-resnet-50",
+        "model_version": None,
+    }
+    objects_result = {
+        "detections": mock_detections,
+        "model_name": "facebook/detr-resnet-50",
+        "model_version": None,
+    }
+
+    def _resolve_image_path(filename: str, folder: str = "uploaded") -> Path:
+        return temp_directories.get(folder, temp_directories["uploaded"]) / filename
+
+    def detect_for_filename_side_effect(filename: str, folder: str = "uploaded"):
+        if not _resolve_image_path(filename, folder).exists():
+            raise HTTPException(status_code=404, detail=f"Image {filename} not found in {folder}")
+        return detection_result
+
+    def get_detected_objects_for_filename_side_effect(filename: str, folder: str = "uploaded"):
+        if not _resolve_image_path(filename, folder).exists():
+            raise HTTPException(status_code=404, detail=f"Image {filename} not found in {folder}")
+        return objects_result
+
+    mock.detect_for_filename.side_effect = detect_for_filename_side_effect
+    mock.get_detected_objects_for_filename.side_effect = get_detected_objects_for_filename_side_effect
     mock.engine.metadata = EngineMetadata(
         model_name="facebook/detr-resnet-50",
         model_revision=None,
@@ -482,8 +499,6 @@ def test_client(mock_inference_engine) -> TestClient:
 @pytest.fixture
 def test_client_with_overrides(
     temp_directories: Dict[str, Path],
-    mock_directory_manager: Mock,
-    mock_file_path_resolver: Mock,
     mock_image_validator: Mock,
     mock_local_storage: Mock,
     mock_image_edit_service: Mock,
@@ -492,15 +507,6 @@ def test_client_with_overrides(
     mock_inference_engine: Mock,
 ) -> TestClient:
     """Create a FastAPI test client with dependency overrides."""
-    def override_get_directories():
-        return temp_directories
-
-    def override_get_directory_manager():
-        return mock_directory_manager
-
-    def override_get_file_path_resolver():
-        return mock_file_path_resolver
-
     def override_get_simple_image_validator():
         return mock_image_validator
 
@@ -516,9 +522,6 @@ def test_client_with_overrides(
     def override_get_object_detection_service():
         return mock_detection_service
 
-    app.dependency_overrides[get_directories] = override_get_directories
-    app.dependency_overrides[get_directory_manager] = override_get_directory_manager
-    app.dependency_overrides[get_file_path_resolver] = override_get_file_path_resolver
     app.dependency_overrides[get_simple_image_validator] = override_get_simple_image_validator
     app.dependency_overrides[get_local_image_storage] = override_get_local_image_storage
     app.dependency_overrides[get_image_edit_service] = override_get_image_edit_service

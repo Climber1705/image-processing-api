@@ -6,7 +6,7 @@ import re
 import uuid
 import pytest
 from pathlib import Path
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from io import BytesIO
 from PIL import Image
 
@@ -23,40 +23,12 @@ class TestLocalImageStorage:
     """Test cases for LocalImageStorage."""
 
     @pytest.fixture
-    def storage_service(self, temp_directories, mock_directory_manager, mock_image_validator, mock_file_path_resolver):
-        """Create LocalImageStorage with mocked dependencies."""
+    def storage_service(self, temp_directories, mock_image_validator):
+        """Create LocalImageStorage with test directories."""
         return LocalImageStorage(
-            directory_manager=mock_directory_manager,
-            image_validator=mock_image_validator,
-            file_resolver=mock_file_path_resolver
+            directories=temp_directories,
+            format_helper=mock_image_validator,
         )
-
-    def test_get_storage_filename_with_id(self, storage_service):
-        """Test storage filename uses the provided UUID."""
-        storage_id, filename = storage_service._get_storage_filename("abc-123-def", "JPEG")
-
-        assert storage_id == "abc-123-def"
-        assert filename == "abc-123-def.jpg"
-
-    def test_get_storage_filename_generates_uuid(self, storage_service):
-        """Test storage filename generates a UUID when none is provided."""
-        storage_id, filename = storage_service._get_storage_filename(None, "JPEG")
-
-        assert filename.endswith(".jpg")
-        assert filename == f"{storage_id}.jpg"
-        uuid.UUID(storage_id)
-
-    def test_get_storage_filename_different_formats(self, storage_service):
-        """Test storage filename generation for different formats."""
-        formats = {
-            "JPEG": ".jpg",
-            "PNG": ".png",
-            "GIF": ".gif"
-        }
-
-        for format_name, expected_ext in formats.items():
-            storage_id, filename = storage_service._get_storage_filename("test-id", format_name)
-            assert filename == f"test-id{expected_ext}"
 
     def test_save_valid_image(self, storage_service, temp_directories, valid_upload_file):
         """Test saving a valid image with UUID storage name."""
@@ -65,31 +37,41 @@ class TestLocalImageStorage:
             file=valid_upload_file.file,
             folder="uploaded",
             storage_id="11111111-1111-1111-1111-111111111111",
-            format="JPEG"
+            format="JPEG",
         )
 
         assert Path(file_path).exists()
         assert Path(file_path).name == "11111111-1111-1111-1111-111111111111.jpg"
 
-    def test_save_with_generated_uuid(self, storage_service, temp_directories, valid_upload_file):
-        """Test saving image with auto-generated UUID filename."""
-        valid_upload_file.file.seek(0)
-        file_path = storage_service.save(
-            file=valid_upload_file.file,
-            folder="uploaded",
-            storage_id=None,
-            format="JPEG"
-        )
+    def test_save_different_formats(self, storage_service, temp_directories, valid_upload_file):
+        """Test saving images with different formats."""
+        formats = {
+            "JPEG": ".jpg",
+            "PNG": ".png",
+            "GIF": ".gif",
+        }
 
-        assert Path(file_path).exists()
-        assert UUID_FILENAME_PATTERN.match(Path(file_path).name)
+        for format_name, expected_ext in formats.items():
+            valid_upload_file.file.seek(0)
+            storage_id = str(uuid.uuid4())
+            file_path = storage_service.save(
+                file=valid_upload_file.file,
+                folder="uploaded",
+                storage_id=storage_id,
+                format=format_name,
+            )
+            assert Path(file_path).name == f"{storage_id}{expected_ext}"
 
-    def test_save_invalid_image(self, storage_service, temp_directories):
+    def test_save_invalid_image(self, storage_service):
         """Test saving an invalid image file."""
         invalid_file = BytesIO(b"not an image")
 
         with pytest.raises(HTTPException) as exc_info:
-            storage_service.save(invalid_file, folder="uploaded")
+            storage_service.save(
+                invalid_file,
+                folder="uploaded",
+                storage_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            )
 
         assert exc_info.value.status_code == 400
         assert "not a valid image" in exc_info.value.detail
@@ -105,58 +87,66 @@ class TestLocalImageStorage:
                 file=valid_upload_file.file,
                 folder=folder,
                 storage_id=storage_id,
-                format="JPEG"
+                format="JPEG",
             )
 
             assert Path(file_path).exists()
             assert folder in file_path
 
-    def test_get_success(self, storage_service, temp_directories):
-        """Test reading an existing file."""
+    def test_read_success(self, storage_service, temp_directories):
+        """Test reading an existing file by path."""
         img = Image.new("RGB", (10, 10), color="red")
         test_file = temp_directories["uploaded"] / "test.jpg"
         img.save(test_file, format="JPEG")
 
-        with storage_service.get("test.jpg") as file_handle:
+        with storage_service.read(test_file) as file_handle:
             content = file_handle.read()
 
         assert content
         assert len(content) > 0
 
-    def test_get_file_not_found(self, storage_service, mock_file_path_resolver):
+    def test_read_file_not_found(self, storage_service, temp_directories):
         """Test reading a non-existent file."""
-        mock_file_path_resolver.find_file.side_effect = HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File not found"
-        )
-
-        with pytest.raises(HTTPException):
-            storage_service.get("nonexistent.jpg")
+        with pytest.raises(FileNotFoundError):
+            storage_service.read(temp_directories["uploaded"] / "missing.jpg")
 
     def test_delete_success(self, storage_service, temp_directories):
-        """Test successful file deletion."""
+        """Test successful file deletion by path."""
         test_file = temp_directories["uploaded"] / "test_delete.jpg"
         test_file.touch()
 
-        result = storage_service.delete("test_delete.jpg")
+        result = storage_service.delete(test_file)
 
         assert result is True
         assert not test_file.exists()
 
-    def test_delete_file_not_found(self, storage_service):
-        """Test deleting non-existent file."""
-        with pytest.raises(HTTPException):
-            storage_service.delete("nonexistent.jpg")
+    def test_delete_file_not_found(self, storage_service, temp_directories):
+        """Test deleting non-existent file returns False."""
+        result = storage_service.delete(temp_directories["uploaded"] / "nonexistent.jpg")
+        assert result is False
 
-    def test_delete_different_folders(self, storage_service, temp_directories):
-        """Test deleting files from different folders."""
-        folders = ["uploaded", "edited", "detected"]
+    def test_exists(self, storage_service, temp_directories):
+        """Test path existence check."""
+        test_file = temp_directories["uploaded"] / "exists.jpg"
+        test_file.touch()
 
-        for folder in folders:
-            test_file = temp_directories[folder] / "test.jpg"
-            test_file.touch()
+        assert storage_service.exists(test_file) is True
+        assert storage_service.exists(temp_directories["uploaded"] / "missing.jpg") is False
 
-            result = storage_service.delete("test.jpg")
+    def test_destination_path(self, storage_service, temp_directories):
+        """Test destination path computation for moves."""
+        source = temp_directories["uploaded"] / "uuid-file.jpg"
+        dest = storage_service.destination_path(source, "edited")
 
-            assert result is True
-            assert not test_file.exists()
+        assert dest == temp_directories["edited"] / "uuid-file.jpg"
+
+    def test_move(self, storage_service, temp_directories):
+        """Test moving a file between folders."""
+        source = temp_directories["uploaded"] / "move-me.jpg"
+        Image.new("RGB", (10, 10), color="blue").save(source, format="JPEG")
+
+        new_path = storage_service.move(source, "edited")
+
+        assert not source.exists()
+        assert Path(new_path).exists()
+        assert Path(new_path).parent == temp_directories["edited"]

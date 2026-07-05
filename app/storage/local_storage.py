@@ -1,5 +1,5 @@
 import os
-import uuid
+import shutil
 from typing import BinaryIO
 from pathlib import Path
 from fastapi import HTTPException, status
@@ -7,9 +7,8 @@ from PIL import Image, UnidentifiedImageError
 
 from app.core.logging_config import get_logger
 from app.storage.base_storage import BaseImageStorage
-from app.media.utils.directory_utils import DirectoryManager
-from app.media.utils.validator.simple_validator import SimpleImageValidator
-from app.media.utils.file_utils import FilePathResolver
+from app.storage.directories import DirectoryManager
+from app.validation.simple_validator import SimpleImageValidator
 
 logger = get_logger("local_storage")
 
@@ -17,34 +16,32 @@ logger = get_logger("local_storage")
 class LocalImageStorage(BaseImageStorage):
     def __init__(
         self,
-        directory_manager: DirectoryManager,
-        image_validator: SimpleImageValidator,
-        file_resolver: FilePathResolver,
+        directories: dict[str, Path],
+        format_helper: SimpleImageValidator,
     ):
-        self.directory_manager = directory_manager
-        self.image_verifier = image_validator
-        self.file_resolver = file_resolver
+        self._dirs = DirectoryManager(directories)
+        self._formats = format_helper
 
-    def _get_storage_filename(self, storage_id: str | None, format: str = "JPEG") -> tuple[str, str]:
-        format = self.image_verifier.validate_format(format)
-        ext = self.image_verifier.get_extension(format)
-        storage_id = storage_id or str(uuid.uuid4())
-        return storage_id, f"{storage_id}{ext}"
+    def destination_path(self, source: str | Path, target_folder: str) -> Path:
+        return self._dirs.get_directory(target_folder) / Path(source).name
+
+    def exists(self, path: str | Path) -> bool:
+        return Path(path).is_file()
 
     def save(
         self,
         file: BinaryIO,
-        folder: str | None = "uploaded",
-        storage_id: str | None = None,
+        folder: str,
+        storage_id: str,
         format: str = "JPEG",
     ) -> str:
-        storage_id, filename = self._get_storage_filename(storage_id, format)
-        directory = self.directory_manager.get_directory(folder)
-        file_path = directory.joinpath(filename)
+        validated_format = self._formats.validate_format(format)
+        ext = self._formats.get_extension(validated_format)
+        file_path = self._dirs.get_directory(folder) / f"{storage_id}{ext}"
 
         try:
             with Image.open(file) as img:
-                img.save(file_path, format=format.upper())
+                img.save(file_path, format=validated_format.upper())
             logger.info(f"Saved image: {file_path}")
             return str(file_path)
 
@@ -60,13 +57,14 @@ class LocalImageStorage(BaseImageStorage):
             logger.error(f"Failed to save image {file_path}: {e}")
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save image")
 
-    def get(self, filename: str) -> BinaryIO:
-        file_path = self.file_resolver.find_file(filename=filename)
+    def read(self, path: str | Path) -> BinaryIO:
+        file_path = Path(path)
+        if not file_path.is_file():
+            raise FileNotFoundError(file_path)
         return open(file_path, "rb")
 
-    def delete(self, filename: str) -> bool:
-        file_path = self.file_resolver.find_file(filename=filename)
-
+    def delete(self, path: str | Path) -> bool:
+        file_path = Path(path)
         try:
             os.remove(file_path)
             logger.info(f"Deleted image: {file_path}")
@@ -77,3 +75,10 @@ class LocalImageStorage(BaseImageStorage):
         except Exception as e:
             logger.error(f"Error deleting file {file_path}: {e}")
             return False
+
+    def move(self, source: str | Path, target_folder: str) -> str:
+        source_path = Path(source)
+        dest_path = self.destination_path(source_path, target_folder)
+        shutil.move(str(source_path), str(dest_path))
+        logger.info(f"Moved image from {source_path} to {dest_path}")
+        return str(dest_path)

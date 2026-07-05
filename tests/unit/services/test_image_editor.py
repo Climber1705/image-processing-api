@@ -16,7 +16,7 @@ class TestImageEditService:
     """Test cases for ImageEditService."""
 
     @pytest.fixture
-    def edit_service(self, temp_directories, mock_directory_manager, mock_image_validator, mock_file_path_resolver):
+    def edit_service(self, temp_directories, mock_image_validator):
         """Create ImageEditService with real storage and mocked CRUD."""
         mock_image_service = Mock()
 
@@ -27,15 +27,14 @@ class TestImageEditService:
         mock_image_service.get_or_create_storage_id.return_value = "11111111-1111-1111-1111-111111111111"
         mock_image_service.register_saved_image.return_value = {}
 
-        local_storage = LocalImageStorage(
-            directory_manager=mock_directory_manager,
-            image_validator=mock_image_validator,
-            file_resolver=mock_file_path_resolver,
+        storage = LocalImageStorage(
+            directories=temp_directories,
+            format_helper=mock_image_validator,
         )
 
         return ImageEditService(
             image_service=mock_image_service,
-            local_storage=local_storage,
+            storage=storage,
         )
 
     def test_build_display_filename_with_suffix(self, edit_service):

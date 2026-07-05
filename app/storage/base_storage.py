@@ -1,16 +1,35 @@
-from typing import BinaryIO
 from abc import ABC, abstractmethod
+from pathlib import Path
+from typing import BinaryIO
 
 
 class BaseImageStorage(ABC):
     @abstractmethod
-    def save(self, file: BinaryIO, folder: str | None = None, filename: str | None = None, format: str = "JPEG") -> str:
-        pass
+    def save(
+        self,
+        file: BinaryIO,
+        folder: str,
+        storage_id: str,
+        format: str = "JPEG",
+    ) -> str:
+        """Write bytes to disk. Returns absolute path string."""
 
     @abstractmethod
-    def get(self, filename: str) -> BinaryIO:
-        pass
+    def read(self, path: str | Path) -> BinaryIO:
+        """Open existing file for reading."""
 
     @abstractmethod
-    def delete(self, filename: str) -> bool:
-        pass
+    def delete(self, path: str | Path) -> bool:
+        """Delete file at path. Returns False if already gone."""
+
+    @abstractmethod
+    def move(self, source: str | Path, target_folder: str) -> str:
+        """Move file to another folder. Returns new absolute path."""
+
+    @abstractmethod
+    def exists(self, path: str | Path) -> bool:
+        """Return True if the file exists at path."""
+
+    @abstractmethod
+    def destination_path(self, source: str | Path, target_folder: str) -> Path:
+        """Return the filesystem path a move would target."""

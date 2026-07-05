@@ -1,14 +1,12 @@
-import shutil
 import uuid
 from typing import Any
 from pathlib import Path
 from fastapi import UploadFile, HTTPException
 
 from app.media.repository import ImageRepository
-from app.media.utils.directory_utils import DirectoryManager
-from app.media.utils.file_utils import FilePathResolver
 from app.media.schema import ImageListItem
-from app.storage.local_storage import LocalImageStorage
+from app.validation.simple_validator import SimpleImageValidator
+from app.storage.base_storage import BaseImageStorage
 from app.core.logging_config import get_logger
 
 logger = get_logger("image_service")
@@ -17,17 +15,13 @@ logger = get_logger("image_service")
 class ImageService:
     def __init__(
         self,
-        local_storage: LocalImageStorage,
-        directory_manager: DirectoryManager,
-        file_resolver: FilePathResolver,
-        directories: dict[str, Path],
         image_repository: ImageRepository,
+        storage: BaseImageStorage,
+        validator: SimpleImageValidator,
     ) -> None:
-        self.local_storage = local_storage
-        self.directory_manager = directory_manager
-        self.file_resolver = file_resolver
-        self.directories = directories
         self.image_repository = image_repository
+        self.storage = storage
+        self.validator = validator
 
     def _get_folder_names(self, folder: str) -> list[str]:
         if folder == "all":
@@ -54,9 +48,7 @@ class ImageService:
         original_filename: str | None,
         format: str,
     ) -> str:
-        ext = self.local_storage.image_verifier.get_extension(
-            self.local_storage.image_verifier.validate_format(format)
-        )
+        ext = self.validator.get_extension(self.validator.validate_format(format))
         if filename:
             return f"{Path(filename).stem}{ext}"
         if original_filename:
@@ -88,7 +80,7 @@ class ImageService:
             logger.info(f"Saving uploaded image as {display_filename}")
             storage_id = self.get_or_create_storage_id(display_filename, "uploaded")
             file.file.seek(0)
-            file_path = self.local_storage.save(
+            file_path = self.storage.save(
                 file=file.file,
                 folder="uploaded",
                 storage_id=storage_id,
@@ -107,17 +99,12 @@ class ImageService:
             logger.error(f"Failed to save uploaded image: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to save image: {e}")
 
-    def get_image_path(self, image_name: str, folder: str = "uploaded") -> Path:
-        record = self._get_record_or_404(image_name, folder)
+    def get_image_path(self, filename: str, folder: str = "uploaded") -> Path:
+        record = self._get_record_or_404(filename, folder)
         path = Path(record.path)
-        if not path.exists():
-            raise HTTPException(status_code=404, detail=f"Image {image_name} not found in {folder}")
+        if not self.storage.exists(path):
+            raise HTTPException(status_code=404, detail=f"Image {filename} not found in {folder}")
         return path
-
-    def get_image_dimensions(self, image_name: str, folder: str = "uploaded") -> tuple[int, int]:
-        logger.debug(f"Getting image dimensions for: {image_name} in folder: {folder}")
-        record = self._get_record_or_404(image_name, folder)
-        return record.width, record.height
 
     def get_image_by_id(self, image_id: str, folder: str = "uploaded") -> dict[str, Any]:
         logger.debug(f"Getting image by ID: {image_id}")
@@ -141,28 +128,20 @@ class ImageService:
     def delete_image(self, image_id: str, folder: str = "uploaded") -> dict[str, Any]:
         logger.info(f"Deleting image with ID: {image_id} from folder: {folder}")
         record = self._get_record_or_404(image_id, folder)
-        image_path = Path(record.path)
         image_info = self.image_repository.to_metadata(record)
 
-        if not image_path.exists():
-            logger.warning(f"File missing for {image_id} at {image_path}, removing DB record")
+        if not self.storage.delete(record.path):
+            logger.warning(f"File missing for {image_id} at {record.path}, removing DB record")
             self.image_repository.delete_by_filename(image_id, folder)
             raise HTTPException(status_code=404, detail=f"Image {image_id} not found in {folder} folder")
 
-        try:
-            image_path.unlink()
-            self.image_repository.delete_by_filename(image_id, folder)
-            logger.info(f"Deleted image {image_id} from {folder}")
-            return {
-                "status": "success",
-                "message": f"Image {image_id} deleted from {folder}",
-                "deleted_image": image_info,
-            }
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Error deleting image: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to delete image: {e}")
+        self.image_repository.delete_by_filename(image_id, folder)
+        logger.info(f"Deleted image {image_id} from {folder}")
+        return {
+            "status": "success",
+            "message": f"Image {image_id} deleted from {folder}",
+            "deleted_image": image_info,
+        }
 
     def delete_all_images(self, folder: str) -> dict[str, str]:
         logger.warning(f"Deleting all images in folder: {folder}")
@@ -174,13 +153,13 @@ class ImageService:
         deleted_count = 0
 
         for record in records:
-            image_path = Path(record.path)
             try:
-                if image_path.exists():
-                    image_path.unlink()
-                deleted_count += 1
+                if self.storage.delete(record.path):
+                    deleted_count += 1
+                elif not self.storage.exists(record.path):
+                    deleted_count += 1
             except Exception as e:
-                logger.warning(f"Failed to delete {image_path}: {e}")
+                logger.warning(f"Failed to delete {record.path}: {e}")
 
         self.image_repository.delete_by_folders(self._get_folder_names(folder))
         logger.info(f"Deleted {deleted_count} images from {folder}")
@@ -196,23 +175,22 @@ class ImageService:
             raise HTTPException(status_code=400, detail="Source and target folders cannot be the same")
 
         record = self._get_record_or_404(image_id, source_folder)
-        source_path = Path(record.path)
-        target_path = self.directory_manager.get_directory(target_folder) / source_path.name
 
-        if not source_path.exists():
+        if not self.storage.exists(record.path):
             raise HTTPException(status_code=404, detail=f"Image {image_id} not found in {source_folder}")
 
-        if target_path.exists():
+        dest_path = self.storage.destination_path(record.path, target_folder)
+        if self.storage.exists(dest_path):
             logger.warning(f"Image {image_id} already exists in {target_folder}")
             raise HTTPException(status_code=409, detail=f"Image {image_id} already exists in {target_folder}")
 
         try:
-            shutil.move(str(source_path), str(target_path))
+            new_path = self.storage.move(record.path, target_folder)
             updated = self.image_repository.update_location(
                 filename=image_id,
                 source_folder=source_folder,
                 target_folder=target_folder,
-                new_path=str(target_path),
+                new_path=new_path,
             )
             logger.info(f"Moved image {image_id} from {source_folder} to {target_folder}")
             return self.image_repository.to_metadata(updated)

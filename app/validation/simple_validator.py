@@ -2,12 +2,13 @@ import io
 import logging
 from fastapi import HTTPException, UploadFile, status
 
-from app.media.utils.validator.base_validator import BaseImageValidator
+from app.validation.base_validator import BaseImageValidator
 
 logger = logging.getLogger("simple_validator")
 
 
 class SimpleImageValidator(BaseImageValidator):
+    
     def __init__(
         self,
         format_extensions: dict[str, str],
