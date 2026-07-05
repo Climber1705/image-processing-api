@@ -28,7 +28,7 @@ from app.media.utils.file_utils import FilePathResolver
 from app.media.utils.validator.simple_validator import SimpleImageValidator
 from app.storage.local_storage import LocalImageStorage
 from app.media.service import ImageService
-from app.media.metadata import ImageMetadataExtractor
+from app.media.metadata import get_image_dimensions, get_image_metadata
 from app.editing.image_editor import ImageEditService
 from app.vision.detection_service import ObjectDetectionService
 from app.dependencies.utils import (
@@ -38,7 +38,6 @@ from app.dependencies.utils import (
 )
 from app.dependencies.storage import get_local_image_storage
 from app.dependencies.services import (
-    get_image_metadata_extractor,
     get_image_edit_service,
     get_image_service,
     get_object_detection_service,
@@ -130,55 +129,10 @@ def mock_image_validator() -> Mock:
 
 
 @pytest.fixture
-def mock_metadata_extractor() -> Mock:
-    """Create a mock ImageMetadataExtractor."""
-    mock = Mock(spec=ImageMetadataExtractor)
-    
-    def get_dimensions_side_effect(image_path):
-        """Get actual dimensions from image file if it exists."""
-        try:
-            with Image.open(image_path) as img:
-                return (img.width, img.height)
-        except (FileNotFoundError, OSError):
-            return (800, 600)
-    
-    def get_metadata_side_effect(image_path):
-        """Get actual metadata from image file if it exists."""
-        try:
-            with Image.open(image_path) as img:
-                return {
-                    "filename": Path(image_path).name,
-                    "format": img.format,
-                    "mode": img.mode,
-                    "width": img.width,
-                    "height": img.height,
-                    "size_bytes": os.path.getsize(image_path) if os.path.exists(image_path) else 102400,
-                    "path": str(image_path),
-                    "url": None
-                }
-        except (FileNotFoundError, OSError):
-            return {
-                "filename": Path(image_path).name if isinstance(image_path, (str, Path)) else "test.jpg",
-                "format": "JPEG",
-                "mode": "RGB",
-                "width": 800,
-                "height": 600,
-                "size_bytes": 102400,
-                "path": str(image_path) if isinstance(image_path, (str, Path)) else "/path/to/test.jpg",
-                "url": None
-            }
-    
-    mock.get_dimensions.side_effect = get_dimensions_side_effect
-    mock.get_metadata.side_effect = get_metadata_side_effect
-    return mock
-
-
-@pytest.fixture
-def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mock, mock_metadata_extractor: Mock) -> Mock:
+def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mock) -> Mock:
     """Create a mock ImageService."""
     mock = Mock(spec=ImageService)
     mock.local_storage = mock_local_storage
-    mock.metadata_extractor = mock_metadata_extractor
 
     def get_image_path_side_effect(image_name: str, folder: str = "uploaded") -> Path:
         return temp_directories.get(folder, temp_directories["uploaded"]) / image_name
@@ -189,7 +143,6 @@ def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mo
         folder: str = "uploaded",
         limit: int = 100,
         offset: int = 0,
-        subdirectory: str | None = None,
     ):
         folder_map = {
             "uploaded": [temp_directories["uploaded"]],
@@ -209,7 +162,7 @@ def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mo
         for directory in folder_map[folder]:
             if not directory.exists():
                 continue
-            search_path = directory / subdirectory if subdirectory else directory
+            search_path = directory
             image_files = [
                 f for f in search_path.rglob("*")
                 if f.suffix.lower() in valid_extensions and f.is_file()
@@ -345,8 +298,11 @@ def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mo
             },
         )
     )
-    mock.get_image_dimensions.side_effect = lambda path: mock_metadata_extractor.get_dimensions(path)
-    mock.get_image_metadata.side_effect = lambda path: mock_metadata_extractor.get_metadata(path)
+    def get_image_dimensions_side_effect(image_name: str, folder: str = "uploaded"):
+        image_path = temp_directories.get(folder, temp_directories["uploaded"]) / image_name
+        return get_image_dimensions(image_path)
+
+    mock.get_image_dimensions.side_effect = get_image_dimensions_side_effect
     return mock
 
 
@@ -529,7 +485,6 @@ def test_client_with_overrides(
     mock_directory_manager: Mock,
     mock_file_path_resolver: Mock,
     mock_image_validator: Mock,
-    mock_metadata_extractor: Mock,
     mock_local_storage: Mock,
     mock_image_edit_service: Mock,
     mock_image_service: Mock,
@@ -549,9 +504,6 @@ def test_client_with_overrides(
     def override_get_simple_image_validator():
         return mock_image_validator
 
-    def override_get_image_metadata_extractor():
-        return mock_metadata_extractor
-
     def override_get_local_image_storage():
         return mock_local_storage
 
@@ -568,7 +520,6 @@ def test_client_with_overrides(
     app.dependency_overrides[get_directory_manager] = override_get_directory_manager
     app.dependency_overrides[get_file_path_resolver] = override_get_file_path_resolver
     app.dependency_overrides[get_simple_image_validator] = override_get_simple_image_validator
-    app.dependency_overrides[get_image_metadata_extractor] = override_get_image_metadata_extractor
     app.dependency_overrides[get_local_image_storage] = override_get_local_image_storage
     app.dependency_overrides[get_image_edit_service] = override_get_image_edit_service
     app.dependency_overrides[get_image_service] = override_get_image_service

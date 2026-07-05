@@ -87,57 +87,56 @@ async def delete_all_images(
     return await asyncio.to_thread(image_service.delete_all_images, folder)
 
 
-@router.get("/{image_name}", response_model=ImageDetailResponse)
+@router.get("/{filename}", response_model=ImageDetailResponse)
 @limiter.limit("30/minute")
 async def get_image(
     request: Request,
-    image_name: str,
+    filename: str,
     image_service: ImageService = Depends(get_image_service),
     folder: str = Query("uploaded", description="The folder to fetch the image from (defaults to 'uploaded')."),
 ):
     """Get metadata for a single image."""
-    logger.info(f"Fetching details for image: {image_name} in folder: {folder}")
-    return await asyncio.to_thread(image_service.get_image_by_id, image_name, folder)
+    logger.info(f"Fetching details for image: {filename} in folder: {folder}")
+    return await asyncio.to_thread(image_service.get_image_by_id, filename, folder)
 
 
-@router.get("/{image_name}/dimensions", response_model=ImageDimensionsResponse)
+@router.get("/{filename}/dimensions", response_model=ImageDimensionsResponse)
 @limiter.limit("20/minute")
 async def get_image_dimensions(
     request: Request,
-    image_name: str,
+    filename: str,
     image_service: ImageService = Depends(get_image_service),
     folder: str = Query("uploaded", description="The folder containing the image (defaults to 'uploaded')."),
 ):
     """Get width and height for an image."""
-    logger.info(f"Fetching dimensions for image: {image_name} in folder: {folder}")
-    image_path = await asyncio.to_thread(image_service.get_image_path, image_name, folder)
-    width, height = await asyncio.to_thread(image_service.get_image_dimensions, image_path)
+    logger.info(f"Fetching dimensions for image: {filename} in folder: {folder}")
+    width, height = await asyncio.to_thread(image_service.get_image_dimensions, filename, folder)
     return ImageDimensionsResponse(width=width, height=height)
 
 
-@router.delete("/{image_name}", response_model=StatusResponse)
+@router.delete("/{filename}", response_model=StatusResponse)
 @limiter.limit("10/minute")
 async def delete_image(
     request: Request,
-    image_name: str,
+    filename: str,
     image_service: ImageService = Depends(get_image_service),
     folder: str = Query("uploaded", description="The folder from which to delete the image (defaults to 'uploaded')."),
 ):
     """Delete a single image by name."""
-    logger.info(f"Deleting image: {image_name} from folder: {folder}")
-    return await asyncio.to_thread(image_service.delete_image, image_name, folder)
+    logger.info(f"Deleting image: {filename} from folder: {folder}")
+    return await asyncio.to_thread(image_service.delete_image, filename, folder)
 
 
-@router.patch("/{image_name}", response_model=ImageDetailResponse)
+@router.patch("/{filename}", response_model=ImageDetailResponse)
 @limiter.limit("20/minute")
 async def update_image(
     request: Request,
-    image_name: str,
+    filename: str,
     move_params: MoveImageRequest,
     image_service: ImageService = Depends(get_image_service),
 ):
     """Move an image between storage folders."""
-    logger.info(f"Moving image: {image_name} from {move_params.source_folder} to {move_params.target_folder}")
+    logger.info(f"Moving image: {filename} from {move_params.source_folder} to {move_params.target_folder}")
     return await asyncio.to_thread(
-        image_service.move_image, image_name, move_params.source_folder, move_params.target_folder
+        image_service.move_image, filename, move_params.source_folder, move_params.target_folder
     )

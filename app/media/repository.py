@@ -5,13 +5,12 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.models.image import ImageRecord
-from app.media.metadata import ImageMetadataExtractor
+from app.media.metadata import get_image_metadata
 
 
 class ImageRepository:
-    def __init__(self, session: Session, metadata_extractor: ImageMetadataExtractor):
+    def __init__(self, session: Session):
         self.session = session
-        self.metadata_extractor = metadata_extractor
 
     def create_record(
         self,
@@ -21,7 +20,7 @@ class ImageRepository:
         image_id: str,
     ) -> ImageRecord:
         path = Path(path)
-        metadata = self.metadata_extractor.get_metadata(path)
+        metadata = get_image_metadata(path)
 
         existing = self.get_by_filename(display_filename, folder)
         if existing is not None:
