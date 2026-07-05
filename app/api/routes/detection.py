@@ -1,6 +1,6 @@
 import time
 import asyncio
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 
 from app.core.rate_limiting import limiter
 from app.core.logging_config import get_logger
@@ -12,11 +12,12 @@ from app.vision.schema import BoundingBoxResponse, DetectedObjectsResponse, Dete
 
 logger = get_logger("detection_routes")
 
-router = APIRouter(prefix="/images/detect", tags=["Image Detections"])
+router = APIRouter(prefix="/images/{image_name}/detections", tags=["Image Detections"])
 
-@router.post("/bounding_boxes/", response_model=BoundingBoxResponse)
+
+@router.post("/bounding-boxes", response_model=BoundingBoxResponse)
 @limiter.limit("5/minute")
-async def bounding_boxes(
+async def create_detection_with_visualization(
     request: Request,
     image_name: str,
     service: ObjectDetectionService = Depends(get_object_detection_service),
@@ -30,7 +31,7 @@ async def bounding_boxes(
 
     logger.info(f"Processing image for bounding boxes: {image_name}")
     data = await asyncio.to_thread(service.detect_with_visualization, image_path)
-    
+
     execution_time = time.time() - start_time
     logger.info(
         f"Successfully detected bounding boxes for image: {image_name}, Execution Time: {execution_time:.2f}s"
@@ -45,9 +46,9 @@ async def bounding_boxes(
     )
 
 
-@router.get("/detected_objects/", response_model=DetectedObjectsResponse)
+@router.get("", response_model=DetectedObjectsResponse)
 @limiter.limit("10/minute")
-async def detected_objects(
+async def list_detections(
     request: Request,
     image_name: str,
     service: ObjectDetectionService = Depends(get_object_detection_service),

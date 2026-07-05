@@ -203,3 +203,120 @@ class TestImageCRUDService:
             crud_service.move_image("test.jpg", "uploaded", "edited")
         
         assert exc_info.value.status_code == 409
+
+
+@pytest.mark.unit
+class TestImageCRUDServiceWithRepository:
+    """Test DB-first CRUD operations when ImageRepository is present."""
+
+    @pytest.fixture
+    def mock_repository(self):
+        repo = Mock()
+        repo.to_metadata.side_effect = lambda record: {
+            "id": record.id,
+            "filename": record.filename,
+            "format": record.format,
+            "mode": record.mode,
+            "width": record.width,
+            "height": record.height,
+            "size_bytes": record.size_bytes,
+            "path": record.path,
+            "url": None,
+            "folder": record.folder,
+        }
+        return repo
+
+    @pytest.fixture
+    def crud_service_with_repo(self, temp_directories, mock_repository):
+        mock_dir_manager = Mock()
+        mock_dir_manager.get_directory.side_effect = lambda folder: temp_directories.get(folder)
+
+        mock_metadata_extractor = Mock()
+        mock_file_resolver = Mock()
+
+        return ImageCRUDService(
+            directory_manager=mock_dir_manager,
+            metadata_extractor=mock_metadata_extractor,
+            file_resolver=mock_file_resolver,
+            directories=temp_directories,
+            image_repository=mock_repository,
+        )
+
+    def _make_record(self, filename, folder, path):
+        record = Mock()
+        record.id = "test-id"
+        record.filename = filename
+        record.folder = folder
+        record.path = str(path)
+        record.format = "JPEG"
+        record.mode = "RGB"
+        record.width = 100
+        record.height = 100
+        record.size_bytes = 1024
+        return record
+
+    def test_get_image_path_from_db(self, crud_service_with_repo, mock_repository, temp_directories):
+        image_path = temp_directories["uploaded"] / "db_test.jpg"
+        img = Image.new('RGB', (100, 100), color='red')
+        img.save(image_path, format="JPEG")
+
+        record = self._make_record("db_test.jpg", "uploaded", image_path)
+        mock_repository.get_by_filename.return_value = record
+
+        result = crud_service_with_repo.get_image_path("db_test.jpg", "uploaded")
+        assert result == image_path
+        mock_repository.get_by_filename.assert_called_once_with("db_test.jpg", "uploaded")
+
+    def test_get_image_by_id_from_db(self, crud_service_with_repo, mock_repository, temp_directories):
+        image_path = temp_directories["uploaded"] / "db_meta.jpg"
+        record = self._make_record("db_meta.jpg", "uploaded", image_path)
+        mock_repository.get_by_filename.return_value = record
+
+        result = crud_service_with_repo.get_image_by_id("db_meta.jpg", "uploaded")
+        assert result["filename"] == "db_meta.jpg"
+        assert result["path"] == str(image_path)
+
+    def test_delete_image_uses_db_path(self, crud_service_with_repo, mock_repository, temp_directories):
+        image_path = temp_directories["uploaded"] / "db_delete.jpg"
+        img = Image.new('RGB', (100, 100), color='red')
+        img.save(image_path, format="JPEG")
+
+        record = self._make_record("db_delete.jpg", "uploaded", image_path)
+        mock_repository.get_by_filename.return_value = record
+
+        result = crud_service_with_repo.delete_image("db_delete.jpg", "uploaded")
+
+        assert result["status"] == "success"
+        assert not image_path.exists()
+        mock_repository.delete_by_filename.assert_called_once_with("db_delete.jpg", "uploaded")
+
+    def test_list_images_from_db(self, crud_service_with_repo, mock_repository):
+        record = self._make_record("listed.jpg", "uploaded", "/tmp/listed.jpg")
+        mock_repository.list_by_folder.return_value = [record]
+
+        results = crud_service_with_repo.list_images("uploaded", limit=10, offset=0)
+
+        assert len(results) == 1
+        assert results[0].filename == "listed.jpg"
+        mock_repository.list_by_folder.assert_called_once_with(
+            folders=["uploaded"], limit=10, offset=0
+        )
+
+    def test_move_image_updates_db(self, crud_service_with_repo, mock_repository, temp_directories):
+        source_path = temp_directories["uploaded"] / "db_move.jpg"
+        img = Image.new('RGB', (100, 100), color='red')
+        img.save(source_path, format="JPEG")
+
+        record = self._make_record("db_move.jpg", "uploaded", source_path)
+        updated_record = self._make_record(
+            "db_move.jpg", "edited", temp_directories["edited"] / "db_move.jpg"
+        )
+        mock_repository.get_by_filename.return_value = record
+        mock_repository.update_location.return_value = updated_record
+
+        result = crud_service_with_repo.move_image("db_move.jpg", "uploaded", "edited")
+
+        assert result["folder"] == "edited"
+        assert not source_path.exists()
+        assert (temp_directories["edited"] / "db_move.jpg").exists()
+        mock_repository.update_location.assert_called_once()

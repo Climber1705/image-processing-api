@@ -91,7 +91,7 @@ uvicorn app.main:app --reload
 Upload an image:
 
 ```bash
-curl -X POST "http://localhost:8000/images/upload" \
+curl -X POST "http://localhost:8000/images" \
   -F "file=@photo.jpg" \
   -F "filename=my_photo" \
   -F "format=JPEG"

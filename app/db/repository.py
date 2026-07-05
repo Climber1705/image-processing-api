@@ -57,6 +57,13 @@ class ImageRepository:
             )
         )
 
+    def get_by_filename_any_folder(self, filename: str) -> ImageRecord | None:
+        return self.session.scalar(
+            select(ImageRecord)
+            .where(ImageRecord.filename == filename)
+            .order_by(ImageRecord.created_at.desc())
+        )
+
     def list_by_folder(
         self,
         folders: list[str],
@@ -69,6 +76,14 @@ class ImageRepository:
             .order_by(ImageRecord.created_at.desc())
             .offset(offset)
             .limit(limit)
+        )
+        return list(self.session.scalars(stmt).all())
+
+    def list_all_by_folders(self, folders: list[str]) -> list[ImageRecord]:
+        stmt = (
+            select(ImageRecord)
+            .where(ImageRecord.folder.in_(folders))
+            .order_by(ImageRecord.created_at.desc())
         )
         return list(self.session.scalars(stmt).all())
 

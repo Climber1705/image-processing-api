@@ -63,7 +63,7 @@ Or visit [http://localhost:8000](http://localhost:8000) in your browser.
 Upload your first image:
 
 ```bash
-curl -X POST "http://localhost:8000/images/upload" \
+curl -X POST "http://localhost:8000/images" \
   -F "file=@photo.jpg" \
   -F "filename=my_photo" \
   -F "format=JPEG"
@@ -74,7 +74,7 @@ curl -X POST "http://localhost:8000/images/upload" \
 Resize an uploaded image:
 
 ```bash
-curl -X POST "http://localhost:8000/images/edit/resize?image_name=my_photo.jpg&width=800&height=600"
+curl -X POST "http://localhost:8000/images/my_photo.jpg/edits/resize?width=800&height=600"
 ```
 
 ### 4. Detect Objects
@@ -82,7 +82,7 @@ curl -X POST "http://localhost:8000/images/edit/resize?image_name=my_photo.jpg&w
 Detect objects in an image:
 
 ```bash
-curl -X POST "http://localhost:8000/images/detect/bounding_boxes/?image_name=my_photo.jpg"
+curl -X POST "http://localhost:8000/images/my_photo.jpg/detections/bounding-boxes"
 ```
 
 **Note**: The first detection request will take 1-3 minutes as the DETR model downloads. Subsequent requests will be faster.
@@ -104,31 +104,31 @@ This provides:
 ### List All Images
 
 ```bash
-curl http://localhost:8000/images/
+curl http://localhost:8000/images
 ```
 
 ### Get Image Details
 
 ```bash
-curl http://localhost:8000/images/my_photo.jpg/detail
+curl http://localhost:8000/imagesmy_photo.jpg
 ```
 
 ### Apply Image Filters
 
 Convert to grayscale:
 ```bash
-curl -X POST "http://localhost:8000/images/edit/grayscale?image_name=my_photo.jpg"
+curl -X POST "http://localhost:8000/images/my_photo.jpg/edits/grayscale"
 ```
 
 Adjust brightness:
 ```bash
-curl -X POST "http://localhost:8000/images/edit/brightness?image_name=my_photo.jpg&factor=1.5"
+curl -X POST "http://localhost:8000/images/my_photo.jpg/edits/brightness?factor=1.5"
 ```
 
 ### Delete an Image
 
 ```bash
-curl -X DELETE "http://localhost:8000/images/my_photo.jpg/delete"
+curl -X DELETE "http://localhost:8000/images/my_photo.jpg"
 ```
 
 ## Next Steps

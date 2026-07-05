@@ -4,6 +4,7 @@ Unit tests for FilePathResolver utility.
 
 import pytest
 from fastapi import HTTPException
+from unittest.mock import Mock
 
 from app.media.utils.file_utils import FilePathResolver
 
@@ -77,3 +78,19 @@ class TestFilePathResolver:
         result = file_resolver._get_existing_file_path("nonexistent.jpg")
         
         assert result is None
+
+    def test_find_file_resolves_from_db(self, temp_directories):
+        """Test finding file via database path lookup."""
+        mock_repo = Mock()
+        test_file = temp_directories["uploaded"] / "db_resolved.jpg"
+        test_file.touch()
+
+        mock_record = Mock()
+        mock_record.path = str(test_file)
+        mock_repo.get_by_filename_any_folder.return_value = mock_record
+
+        resolver = FilePathResolver(directories=temp_directories, image_repository=mock_repo)
+        result = resolver.find_file("db_resolved.jpg")
+
+        assert result == test_file
+        mock_repo.get_by_filename_any_folder.assert_called_once_with("db_resolved.jpg")

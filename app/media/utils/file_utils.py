@@ -7,16 +7,37 @@ logger = get_logger("file_utils")
 
 
 class FilePathResolver:
-    
-    def __init__(self, directories: dict[str, Path]):
+
+    def __init__(self, directories: dict[str, Path], image_repository=None):
         self.directories = directories
+        self.image_repository = image_repository
         logger.info("FileFinder initialized with directories: %s", self.directories)
 
+    def _resolve_from_db(self, filename: str) -> Path | None:
+        if self.image_repository is None:
+            return None
+
+        record = self.image_repository.get_by_filename_any_folder(filename)
+        if record is None:
+            return None
+
+        file_path = Path(record.path)
+        if file_path.is_file():
+            logger.debug(f"File resolved from DB: {file_path}")
+            return file_path
+
+        logger.warning(f"DB record exists for {filename} but file missing at {file_path}")
+        return None
+
     def _get_existing_file_path(self, filename: str) -> Path | None:
+        db_path = self._resolve_from_db(filename)
+        if db_path is not None:
+            return db_path
+
         for directory in self.directories.values():
             file_path = directory / filename
             if file_path.is_file():
-                logger.debug(f"File found: {file_path}")
+                logger.debug(f"File found on filesystem: {file_path}")
                 return file_path
         logger.debug(f"File not found: {filename}")
         return None

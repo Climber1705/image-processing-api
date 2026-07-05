@@ -39,13 +39,13 @@ Handles system-level endpoints:
 
 Handles all image CRUD operations:
 
-- **POST `/images/upload`**: Upload new images
-- **GET `/images/`**: List images with filtering and pagination
-- **GET `/images/{image_name}/detail`**: Get detailed image metadata
-- **GET `/images/{image_name}/metadata/dimensions`**: Get image dimensions
-- **DELETE `/images/{image_name}/delete`**: Delete a specific image
-- **POST `/images/{image_name}/move`**: Move image between folders
-- **DELETE `/images/clear_all`**: Delete all images in a folder
+- **POST `/images`**: Upload new images
+- **GET `/images`**: List images with filtering and pagination
+- **DELETE `/images`**: Delete all images in a folder
+- **GET `/images/{image_name}`**: Get detailed image metadata
+- **GET `/images/{image_name}/dimensions`**: Get image dimensions
+- **PATCH `/images/{image_name}`**: Move image between folders
+- **DELETE `/images/{image_name}`**: Delete a specific image
 
 **Rate Limits**: 10-60 requests/minute depending on operation
 
@@ -53,13 +53,13 @@ Handles all image CRUD operations:
 
 Handles image transformations and filters:
 
-- **POST `/images/edit/resize`**: Resize images
-- **POST `/images/edit/grayscale`**: Convert to grayscale
-- **POST `/images/edit/rotate`**: Rotate images
-- **POST `/images/edit/blur`**: Apply blur filter
-- **POST `/images/edit/sharpen`**: Apply sharpening filter
-- **POST `/images/edit/brightness`**: Adjust brightness
-- **POST `/images/edit/contrast`**: Adjust contrast
+- **POST `/images/{image_name}/edits/resize`**: Resize images
+- **POST `/images/{image_name}/edits/grayscale`**: Convert to grayscale
+- **POST `/images/{image_name}/edits/rotate`**: Rotate images
+- **POST `/images/{image_name}/edits/blur`**: Apply blur filter
+- **POST `/images/{image_name}/edits/sharpen`**: Apply sharpening filter
+- **POST `/images/{image_name}/edits/brightness`**: Adjust brightness
+- **POST `/images/{image_name}/edits/contrast`**: Adjust contrast
 
 **Rate Limits**: 10-20 requests/minute depending on operation complexity
 
@@ -67,8 +67,8 @@ Handles image transformations and filters:
 
 Handles object detection operations:
 
-- **POST `/images/detect/bounding_boxes/`**: Detect objects and draw bounding boxes
-- **GET `/images/detect/detected_objects/`**: Get list of detected objects
+- **POST `/images/{image_name}/detections/bounding-boxes`**: Detect objects and draw bounding boxes
+- **GET `/images/{image_name}/detections`**: Get list of detected objects
 
 **Rate Limits**: 5-10 requests/minute (lower due to ML model processing)
 

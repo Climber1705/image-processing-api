@@ -10,6 +10,7 @@ from app.media.schema import (
     ImageDetailResponse,
     ImageDimensionsResponse,
     ImageListItem,
+    ImageMetadata,
     ImageResponse,
     MoveImageRequest,
     StatusResponse,
@@ -20,13 +21,14 @@ logger = get_logger("image_routes")
 
 router = APIRouter(
     prefix="/images",
-    tags=["CRUD Images"],
+    tags=["Images"],
     responses={404: {"description": "Not found"}},
 )
 
-@router.post("/upload", status_code=status.HTTP_201_CREATED, response_model=ImageResponse)
+
+@router.post("", status_code=status.HTTP_201_CREATED, response_model=ImageResponse)
 @limiter.limit("10/minute")
-async def upload_image(
+async def create_image(
     request: Request,
     file: UploadFile,
     filename: str | None = None,
@@ -40,10 +42,18 @@ async def upload_image(
         await asyncio.to_thread(validator.validate_format, format)
 
         logger.info(f"Uploading image: {file.filename} as {filename or file.filename} with format {format}")
-        file_path = await asyncio.to_thread(image_service.save_uploaded_image, file, filename, format)
-        metadata = await asyncio.to_thread(image_service.get_image_metadata, file_path)
+        file_path, metadata = await asyncio.to_thread(image_service.save_uploaded_image, file, filename, format)
         logger.info(f"Image uploaded successfully: {file_path}")
-        return ImageResponse(status="success", path=file_path, metadata=metadata)
+        return ImageResponse(
+            status="success",
+            path=file_path,
+            metadata=ImageMetadata(
+                format=metadata["format"],
+                mode=metadata["mode"],
+                width=metadata["width"],
+                height=metadata["height"],
+            ),
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -51,9 +61,9 @@ async def upload_image(
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
-@router.get("/", response_model=list[ImageListItem])
+@router.get("", response_model=list[ImageListItem])
 @limiter.limit("60/minute")
-async def get_images(
+async def list_images(
     request: Request,
     image_service: ImageService = Depends(get_image_service),
     folder: str = Query("all", description="Filter images by folder (defaults to 'all')."),
@@ -65,7 +75,19 @@ async def get_images(
     return await asyncio.to_thread(image_service.list_images, folder, limit, offset)
 
 
-@router.get("/{image_name}/detail", response_model=ImageDetailResponse)
+@router.delete("", response_model=StatusResponse)
+@limiter.limit("2/hour")
+async def delete_all_images(
+    request: Request,
+    image_service: ImageService = Depends(get_image_service),
+    folder: str = Query("all", description="The folder from which to delete all images (defaults to 'all')."),
+):
+    """Delete all images in a folder. Irreversible."""
+    logger.warning(f"Clearing all images in folder: {folder}")
+    return await asyncio.to_thread(image_service.delete_all_images, folder)
+
+
+@router.get("/{image_name}", response_model=ImageDetailResponse)
 @limiter.limit("30/minute")
 async def get_image(
     request: Request,
@@ -78,9 +100,9 @@ async def get_image(
     return await asyncio.to_thread(image_service.get_image_by_id, image_name, folder)
 
 
-@router.get("/{image_name}/metadata/dimensions", response_model=ImageDimensionsResponse)
+@router.get("/{image_name}/dimensions", response_model=ImageDimensionsResponse)
 @limiter.limit("20/minute")
-async def get_dimensions(
+async def get_image_dimensions(
     request: Request,
     image_name: str,
     image_service: ImageService = Depends(get_image_service),
@@ -93,7 +115,7 @@ async def get_dimensions(
     return ImageDimensionsResponse(width=width, height=height)
 
 
-@router.delete("/{image_name}/delete", response_model=StatusResponse)
+@router.delete("/{image_name}", response_model=StatusResponse)
 @limiter.limit("10/minute")
 async def delete_image(
     request: Request,
@@ -106,9 +128,9 @@ async def delete_image(
     return await asyncio.to_thread(image_service.delete_image, image_name, folder)
 
 
-@router.post("/{image_name}/move", response_model=ImageDetailResponse)
+@router.patch("/{image_name}", response_model=ImageDetailResponse)
 @limiter.limit("20/minute")
-async def move_image(
+async def update_image(
     request: Request,
     image_name: str,
     move_params: MoveImageRequest,
@@ -119,15 +141,3 @@ async def move_image(
     return await asyncio.to_thread(
         image_service.move_image, image_name, move_params.source_folder, move_params.target_folder
     )
-
-
-@router.delete("/clear_all", response_model=StatusResponse)
-@limiter.limit("2/hour")
-async def clear_images(
-    request: Request,
-    image_service: ImageService = Depends(get_image_service),
-    folder: str = Query("all", description="The folder from which to delete all images (defaults to 'all')."),
-):
-    """Delete all images in a folder. Irreversible."""
-    logger.warning(f"Clearing all images in folder: {folder}")
-    return await asyncio.to_thread(image_service.delete_all_images, folder)

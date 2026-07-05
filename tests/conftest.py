@@ -477,6 +477,7 @@ def mock_image_service(
     mock_local_storage: Mock,
     mock_image_crud_service: Mock,
     mock_metadata_extractor: Mock,
+    temp_directories: Dict[str, Path],
 ) -> Mock:
     """Create a mock ImageService."""
     mock = Mock(spec=ImageService)
@@ -485,8 +486,19 @@ def mock_image_service(
     mock.metadata_extractor = mock_metadata_extractor
 
     mock.save_uploaded_image.side_effect = (
-        lambda file, filename=None, format="JPEG": mock_local_storage.save(
-            file=file, folder="uploaded", filename=filename, format=format
+        lambda file, filename=None, format="JPEG": (
+            mock_local_storage.save(file=file, folder="uploaded", filename=filename, format=format),
+            {
+                "filename": filename or "test.jpg",
+                "format": format,
+                "mode": "RGB",
+                "width": 100,
+                "height": 100,
+                "size_bytes": 1024,
+                "path": str(temp_directories["uploaded"] / (filename or "test.jpg")),
+                "url": None,
+                "folder": "uploaded",
+            },
         )
     )
     mock.get_image_path.side_effect = lambda name, folder="uploaded": str(

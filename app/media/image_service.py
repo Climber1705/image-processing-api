@@ -23,15 +23,15 @@ class ImageService:
 
     def save_uploaded_image(
         self, file: UploadFile, filename: str | None = None, format: str = "JPEG"
-    ) -> str:
+    ) -> tuple[str, dict[str, Any]]:
         try:
             logger.info(f"Saving uploaded image: {filename or file.filename}")
             file.file.seek(0)
             file_path = self.local_storage.save(
                 file=file.file, folder="uploaded", filename=filename, format=format
             )
-            self.image_crud.register_saved_image(file_path, folder="uploaded")
-            return file_path
+            metadata = self.image_crud.register_saved_image(file_path, folder="uploaded")
+            return file_path, metadata
         except HTTPException:
             raise
         except Exception as e:

@@ -190,7 +190,7 @@ A: Yes, if you have a CUDA-compatible GPU, PyTorch will automatically use it. En
 
 ### Q: How do I clear all uploaded images?
 
-A: Use the `/images/clear_all` endpoint or manually delete files from `app/static/uploaded/`.
+A: Use `DELETE /images?folder=uploaded` or manually delete files from `app/static/uploaded/`.
 
 ### Q: Can I change the rate limits?
 

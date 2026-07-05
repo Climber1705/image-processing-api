@@ -9,7 +9,7 @@ from app.editing.schema import RotateEditRequest, SharpenEditRequest, EditRespon
 
 logger = get_logger("editing_routes")
 
-router = APIRouter(prefix="/images/edit", tags=["Image Editing"])
+router = APIRouter(prefix="/images/{image_name}/edits", tags=["Image Editing"])
 
 
 @router.post("/resize", response_model=EditResponse)
