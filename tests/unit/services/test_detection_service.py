@@ -16,13 +16,13 @@ class TestObjectDetectionService:
 
     @pytest.fixture
     def mock_image_repository(self):
-        return Mock()
+        mock = Mock()
+        mock.resolve_image_id.return_value = "output-id"
+        return mock
 
     @pytest.fixture
     def mock_image_service(self):
-        mock = Mock()
-        mock.get_or_create_storage_id.return_value = "output-id"
-        return mock
+        return Mock()
 
     @pytest.fixture
     def detection_service(self, mock_local_storage, mock_inference_engine, mock_image_service, mock_image_repository):

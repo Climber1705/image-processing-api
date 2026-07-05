@@ -29,6 +29,7 @@ from app.media.mappers import (
     to_upload_response,
 )
 from app.media.service import ImageService
+from app.media.errors import MediaDomainError
 from app.validation.simple_validator import SimpleImageValidator
 
 logger = get_logger("image_routes")
@@ -52,15 +53,17 @@ async def create_image(
     """Upload an image file with optional custom filename and output format."""
     try:
         await asyncio.to_thread(validator.validate, file)
-
+        file_data = await file.read()
         logger.info(
             f"Uploading image: {file.filename} as {form.filename or file.filename} with format {form.format}"
         )
         result = await asyncio.to_thread(
-            image_service.upload_image, file, form.filename, form.format
+            image_service.upload_image, file_data, form.filename, form.format
         )
         logger.info(f"Image uploaded successfully: {result.path}")
         return to_upload_response(result)
+    except MediaDomainError:
+        raise
     except HTTPException:
         raise
     except Exception as e:
@@ -70,7 +73,7 @@ async def create_image(
 
 @router.get("", response_model=list[ImageListItem])
 @limiter.limit("60/minute")
-async def list_images(
+async def get_images(
     request: Request,
     query: Annotated[ListImagesQuery, Query()],
     image_service: ImageService = Depends(get_image_service),
@@ -78,21 +81,21 @@ async def list_images(
     """List images with optional folder filter and pagination."""
     logger.info(f"Fetching image list from folder: {query.folder}, limit={query.limit}, offset={query.offset}")
     images = await asyncio.to_thread(
-        image_service.list_images, query.folder, query.limit, query.offset
+        image_service.get_images, query.folder, query.limit, query.offset
     )
     return [to_list_item(image) for image in images]
 
 
 @router.delete("", response_model=StatusResponse)
 @limiter.limit("2/hour")
-async def delete_all_images(
+async def delete_images(
     request: Request,
     query: Annotated[FolderFilterQuery, Query()],
     image_service: ImageService = Depends(get_image_service),
 ):
     """Delete all images in a folder. Irreversible."""
     logger.warning(f"Clearing all images in folder: {query.folder}")
-    result = await asyncio.to_thread(image_service.delete_all_images, query.folder)
+    result = await asyncio.to_thread(image_service.delete_images, query.folder)
     return to_status_response(result)
 
 

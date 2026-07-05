@@ -252,21 +252,22 @@ def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mo
             }
     
     mock.move_image.side_effect = move_image_side_effect
-    mock.get_or_create_storage_id.return_value = "11111111-1111-1111-1111-111111111111"
-    mock.save_uploaded_image.side_effect = (
-        lambda file, filename=None, format="JPEG": (
-            mock_local_storage.save(file=file, folder="uploaded", storage_id="upload-id", format=format),
-            {
-                "filename": filename or "test.jpg",
-                "format": format,
-                "mode": "RGB",
-                "width": 100,
-                "height": 100,
-                "size_bytes": 1024,
-                "path": str(temp_directories["uploaded"] / (filename or "test.jpg")),
-                "url": None,
-                "folder": "uploaded",
-            },
+    from app.media.dtos import ImageDTO, SaveImageResultDTO
+
+    mock.upload_image.side_effect = (
+        lambda file, filename=None, format="JPEG": SaveImageResultDTO(
+            path=str(temp_directories["uploaded"] / (filename or "test.jpg")),
+            image=ImageDTO(
+                id="upload-id",
+                filename=filename or "test.jpg",
+                format=format,
+                mode="RGB",
+                width=100,
+                height=100,
+                size_bytes=1024,
+                path=str(temp_directories["uploaded"] / (filename or "test.jpg")),
+                folder="uploaded",
+            ),
         )
     )
     return mock

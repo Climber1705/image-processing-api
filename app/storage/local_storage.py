@@ -34,10 +34,16 @@ class LocalImageStorage(BaseImageStorage):
         folder: str,
         storage_id: str,
         format: str = "JPEG",
+        *,
+        display_filename: str | None = None,
     ) -> str:
         validated_format = self._formats.validate_format(format)
         ext = self._formats.get_extension(validated_format)
-        file_path = self._dirs.get_directory(folder) / f"{storage_id}{ext}"
+        if display_filename is not None:
+            file_path = self._dirs.get_directory(folder) / storage_id / display_filename
+        else:
+            file_path = self._dirs.get_directory(folder) / f"{storage_id}{ext}"
+        file_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
             with Image.open(file) as img:

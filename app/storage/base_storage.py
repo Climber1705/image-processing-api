@@ -11,6 +11,8 @@ class BaseImageStorage(ABC):
         folder: str,
         storage_id: str,
         format: str = "JPEG",
+        *,
+        display_filename: str | None = None,
     ) -> str:
         """Write bytes to disk. Returns absolute path string."""
 

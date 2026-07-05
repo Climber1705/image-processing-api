@@ -41,7 +41,7 @@ class ImageEditService:
     ) -> str:
         image_path = self.image_service.get_image_path(image_name, "uploaded")
         display_filename = self._build_display_filename(image_name, suffix)
-        storage_id = self.image_service.get_or_create_storage_id(display_filename, "edited")
+        storage_id = self.image_repository.resolve_image_id(display_filename, "edited")
 
         try:
             with Image.open(image_path) as img:

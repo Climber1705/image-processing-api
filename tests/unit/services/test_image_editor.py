@@ -24,9 +24,9 @@ class TestImageEditService:
             return temp_directories.get(folder, temp_directories["uploaded"]) / image_name
 
         mock_image_service.get_image_path.side_effect = get_image_path_side_effect
-        mock_image_service.get_or_create_storage_id.return_value = "11111111-1111-1111-1111-111111111111"
 
         mock_image_repository = Mock()
+        mock_image_repository.resolve_image_id.return_value = "11111111-1111-1111-1111-111111111111"
 
         storage = LocalImageStorage(
             directories=temp_directories,

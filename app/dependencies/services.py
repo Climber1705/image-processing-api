@@ -18,7 +18,7 @@ def get_image_service(
     validator: SimpleImageValidator = Depends(get_simple_image_validator),
 ) -> ImageService:
     return ImageService(
-        image_repository=image_repository,
+        repository=image_repository,
         storage=storage,
         validator=validator,
     )

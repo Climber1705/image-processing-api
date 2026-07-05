@@ -75,7 +75,7 @@ class ObjectDetectionService:
             source_ext = Path(source_filename).suffix or ".jpg"
             display_filename = f"{source_stem}_bounding_boxes{source_ext}"
             save_format = source_ext.lstrip(".").upper() or "PNG"
-            storage_id = self.image_service.get_or_create_storage_id(display_filename, "detected")
+            storage_id = self.image_repository.resolve_image_id(display_filename, "detected")
 
             output_path = self.storage.save(
                 file=self._image_to_bytesio(annotated),

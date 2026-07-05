@@ -1,15 +1,38 @@
-class MediaDomainError(Exception): ...
+class MediaDomainError(Exception):
+    status_code: int = 500
 
-class ImageNotFoundError(MediaDomainError): ...
+    def __init__(self, message: str) -> None:
+        self.message = message
+        super().__init__(message)
 
-class DuplicateImageError(MediaDomainError): ...
 
-class InvalidFolderError(MediaDomainError): ...
+class ImageNotFoundError(MediaDomainError):
+    status_code = 404
 
-class InvalidMoveError(MediaDomainError): ...
 
-class ImageConflictError(MediaDomainError): ...
+class DuplicateImageError(MediaDomainError):
+    status_code = 409
 
-class ImageSaveError(MediaDomainError): ...
 
-class ImageOperationError(MediaDomainError): ...
+class InvalidFolderError(MediaDomainError):
+    status_code = 400
+
+
+class InvalidMoveError(MediaDomainError):
+    status_code = 400
+
+
+class ImageConflictError(MediaDomainError):
+    status_code = 409
+
+
+class ImageSaveError(MediaDomainError):
+    status_code = 500
+
+
+class ImageOperationError(MediaDomainError):
+    status_code = 500
+
+
+class ImageCreationError(MediaDomainError):
+    status_code = 409

@@ -1,5 +1,5 @@
-import uuid
 from pathlib import Path
+
 from fastapi import UploadFile
 
 from app.core.logging_config import get_logger
@@ -12,12 +12,14 @@ from app.media.dtos import (
 from app.media.enums import FolderFilter, ImageFolder
 from app.media.errors import (
     ImageConflictError,
+    ImageCreationError,
     ImageNotFoundError,
     ImageOperationError,
     ImageSaveError,
     InvalidFolderError,
     InvalidMoveError,
 )
+from app.media.hash import compute_checksum
 from app.media.mappers import record_to_dto
 from app.media.repository import ImageRepository
 from app.storage.base_storage import BaseImageStorage
@@ -27,7 +29,7 @@ logger = get_logger("image_service")
 
 
 class ImageService:
-    
+
     def __init__(
         self,
         repository: ImageRepository,
@@ -52,37 +54,54 @@ class ImageService:
             return f"{original.stem}{ext}"
         return f"image{ext}"
 
-    def get_or_create_storage_id(self, display_filename: str, folder: str) -> str:
-        existing = self.repository.get_by_filename(display_filename, folder)
-        if existing is not None:
-            return existing.id
-        return str(uuid.uuid4())
-
     def upload_image(
         self,
         file: UploadFile,
         filename: str | None = None,
         format: str = "JPEG",
     ) -> SaveImageResultDTO:
+        display_filename = self._resolve_display_filename(filename, file.filename, format)
+        logger.info(f"Saving uploaded image as {display_filename}")
+
+        file.file.seek(0)
+        content_hash = compute_checksum(file.file)
+
+        existing = self.repository.get_by_content_hash(content_hash, ImageFolder.UPLOADED)
+        if existing is not None:
+            logger.info("Duplicate image detected", extra={"content_hash": content_hash})
+            return SaveImageResultDTO(path=existing.path, image=record_to_dto(existing))
+
+        image_id = self.repository.generate_id()
+        file.file.seek(0)
+        file_path = self.storage.save(
+            file=file.file,
+            folder=ImageFolder.UPLOADED,
+            storage_id=image_id,
+            format=format,
+            display_filename=display_filename,
+        )
+
         try:
-            display_filename = self._resolve_display_filename(filename, file.filename, format)
-            logger.info(f"Saving uploaded image as {display_filename}")
-            storage_id = self.get_or_create_storage_id(display_filename, ImageFolder.UPLOADED)
-            file.file.seek(0)
-            file_path = self.storage.save(
-                file=file.file,
-                folder=ImageFolder.UPLOADED,
-                storage_id=storage_id,
-                format=format,
-            )
-            image = self.repository.create_record(
+            image = self.repository.create(
+                image_id=image_id,
                 path=file_path,
                 folder=ImageFolder.UPLOADED,
                 display_filename=display_filename,
-                image_id=storage_id,
+                content_hash=content_hash,
             )
             return SaveImageResultDTO(path=file_path, image=image)
+        except ImageCreationError:
+            self.storage.delete(file_path)
+            existing = self.repository.get_by_content_hash(content_hash, ImageFolder.UPLOADED)
+            if existing is not None:
+                logger.info(
+                    "Duplicate image detected after create race",
+                    extra={"content_hash": content_hash},
+                )
+                return SaveImageResultDTO(path=existing.path, image=record_to_dto(existing))
+            raise ImageSaveError("Failed to save image") from None
         except Exception as e:
+            self.storage.delete(file_path)
             if isinstance(e, (ImageNotFoundError, ImageSaveError)):
                 raise
             logger.error(f"Failed to save uploaded image: {e}")
@@ -114,7 +133,7 @@ class ImageService:
             raise ImageNotFoundError(f"Image {filename} not found in {folder}")
         return record_to_dto(record)
 
-    def list_images(
+    def get_images(
         self,
         folder: str = ImageFolder.UPLOADED,
         limit: int = 100,
@@ -128,7 +147,11 @@ class ImageService:
         )
         return [record_to_dto(record) for record in records]
 
-    def delete_image(self, filename: str, folder: str = ImageFolder.UPLOADED) -> DeleteImageResultDTO:
+    def delete_image(
+        self,
+        filename: str,
+        folder: str = ImageFolder.UPLOADED,
+    ) -> DeleteImageResultDTO:
         logger.info(f"Deleting image with filename: {filename} from folder: {folder}")
         record = self.repository.get_by_filename(filename, folder)
         if record is None:
@@ -149,7 +172,7 @@ class ImageService:
             deleted_image=image,
         )
 
-    def delete_all_images(self, folder: str) -> OperationStatusDTO:
+    def delete_images(self, folder: str) -> OperationStatusDTO:
         logger.warning(f"Deleting all images in folder: {folder}")
         if folder not in FolderFilter.values():
             logger.warning(f"Invalid folder: {folder}")

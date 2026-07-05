@@ -1,10 +1,13 @@
+import uuid
 from pathlib import Path
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.image import ImageRecord
 from app.media.dtos import ImageDTO
+from app.media.errors import ImageCreationError
 from app.media.mappers import record_to_dto
 from app.media.metadata import get_image_metadata
 
@@ -13,12 +16,57 @@ class ImageRepository:
     def __init__(self, session: Session):
         self.session = session
 
+    def generate_id(self) -> str:
+        dialect = self.session.bind.dialect.name
+        if dialect == "postgresql":
+            return str(self.session.scalar(text("SELECT gen_random_uuid()")))
+        return str(uuid.uuid4())
+
+    def resolve_image_id(self, display_filename: str, folder: str) -> str:
+        existing = self.get_by_filename(display_filename, folder)
+        if existing is not None:
+            return existing.id
+        return self.generate_id()
+
+    def create(
+        self,
+        *,
+        image_id: str,
+        path: str | Path,
+        folder: str,
+        display_filename: str,
+        content_hash: str,
+    ) -> ImageDTO:
+        path = Path(path)
+        metadata = get_image_metadata(path)
+        record = ImageRecord(
+            id=image_id,
+            filename=display_filename,
+            folder=folder,
+            path=str(path),
+            format=metadata.format,
+            mode=metadata.mode,
+            width=metadata.width,
+            height=metadata.height,
+            size_bytes=metadata.size_bytes,
+            content_hash=content_hash,
+        )
+        try:
+            self.session.add(record)
+            self.session.commit()
+            self.session.refresh(record)
+            return record_to_dto(record)
+        except IntegrityError as exc:
+            self.session.rollback()
+            raise ImageCreationError("Failed to create image record") from exc
+
     def create_record(
         self,
         path: str | Path,
         folder: str,
         display_filename: str,
         image_id: str,
+        content_hash: str | None = None,
     ) -> ImageDTO:
         path = Path(path)
         metadata = get_image_metadata(path)
@@ -31,6 +79,8 @@ class ImageRepository:
             existing.width = metadata.width
             existing.height = metadata.height
             existing.size_bytes = metadata.size_bytes
+            if content_hash is not None:
+                existing.content_hash = content_hash
             self.session.commit()
             self.session.refresh(existing)
             return record_to_dto(existing)
@@ -45,6 +95,7 @@ class ImageRepository:
             width=metadata.width,
             height=metadata.height,
             size_bytes=metadata.size_bytes,
+            content_hash=content_hash,
         )
         self.session.add(record)
         self.session.commit()
@@ -67,6 +118,14 @@ class ImageRepository:
         return self.session.scalar(
             select(ImageRecord).where(
                 ImageRecord.filename == filename,
+                ImageRecord.folder == folder,
+            )
+        )
+
+    def get_by_content_hash(self, content_hash: str, folder: str) -> ImageRecord | None:
+        return self.session.scalar(
+            select(ImageRecord).where(
+                ImageRecord.content_hash == content_hash,
                 ImageRecord.folder == folder,
             )
         )
