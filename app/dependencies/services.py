@@ -7,6 +7,7 @@ from app.dependencies.storage import get_local_image_storage
 from app.services.image.image_editor import ImageEditService
 from app.services.image.metadata_handler import ImageMetadataExtractor
 from app.services.image.crud_operations import ImageCRUDService
+from app.services.image.image_service import ImageService
 from app.services.detection.detection_service import ObjectDetectionService
 from app.services.inference.engine import InferenceEngine
 from app.storage.local_storage import LocalImageStorage
@@ -50,4 +51,16 @@ def get_image_edit_service(
     return ImageEditService(
         image_crud=image_crud,
         directories=directories,
+    )
+
+
+def get_image_service(
+    local_storage: LocalImageStorage = Depends(get_local_image_storage),
+    image_crud: ImageCRUDService = Depends(get_image_crud_service),
+    metadata_extractor: ImageMetadataExtractor = Depends(get_image_metadata_extractor),
+) -> ImageService:
+    return ImageService(
+        local_storage=local_storage,
+        image_crud=image_crud,
+        metadata_extractor=metadata_extractor,
     )

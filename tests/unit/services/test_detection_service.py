@@ -50,9 +50,9 @@ class TestObjectDetectionService:
 
         detections = detection_service.get_detected_objects(str(image_path))
 
-        assert isinstance(detections, list)
-        assert len(detections) == 2
-        assert detections[0]["label"] == "person"
+        assert isinstance(detections, dict)
+        assert len(detections["detections"]) == 2
+        assert detections["detections"][0]["label"] == "person"
         detection_service.engine.predict.assert_called_once()
 
     def test_get_bounding_boxes(self, detection_service, temp_directories, sample_result, mock_local_storage):

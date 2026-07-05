@@ -2,7 +2,7 @@ import os
 from io import BytesIO
 from tempfile import SpooledTemporaryFile
 
-from fastapi import UploadFile
+from fastapi import UploadFile, HTTPException
 from PIL import Image
 from typing import Any
 
@@ -58,35 +58,49 @@ class ObjectDetectionService:
         return result, image
 
     def detect_with_visualization(self, image_path: str) -> dict[str, Any]:
-        result, image = self._predict(image_path)
+        try:
+            logger.info(f"Starting object detection on image: {image_path}")
+            result, image = self._predict(image_path)
 
-        annotated = draw_bounding_boxes(image, result.detections)
+            annotated = draw_bounding_boxes(image, result.detections)
 
-        original_filename = os.path.basename(image_path)
-        name, ext = os.path.splitext(original_filename)
-        new_filename = f"{name}_bounding_boxes{ext}"
-        save_format = ext.lstrip(".").upper() or "PNG"
+            original_filename = os.path.basename(image_path)
+            name, ext = os.path.splitext(original_filename)
+            new_filename = f"{name}_bounding_boxes{ext}"
+            save_format = ext.lstrip(".").upper() or "PNG"
 
-        output_path = self.local_storage.save(
-            file=self._pillow_to_uploadfile(annotated, filename=new_filename),
-            folder="detected",
-            filename=new_filename,
-            format=save_format,
-        )
+            output_path = self.local_storage.save(
+                file=self._pillow_to_uploadfile(annotated, filename=new_filename),
+                folder="detected",
+                filename=new_filename,
+                format=save_format,
+            )
 
-        logger.info(f"Bounding boxes saved to: {output_path}")
-        return {
-            "image_with_boxes": output_path,
-            "detections": result.to_dict_list(),
-            "model_name": result.model_name,
-            "model_version": result.model_version,
-        }
+            logger.info(f"Bounding boxes saved to: {output_path}")
+            logger.info(f"Detection completed for image: {image_path}")
+            return {
+                "image_with_boxes": output_path,
+                "detections": result.to_dict_list(),
+                "model_name": result.model_name,
+                "model_version": result.model_version,
+            }
+        except Exception as e:
+            logger.error(f"Object detection failed for {image_path}: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Object detection failed: {str(e)}")
 
     def get_bounding_boxes(self, image_path: str) -> str:
         data = self.detect_with_visualization(image_path)
         return data["image_with_boxes"]
 
-    def get_detected_objects(self, image_path: str) -> list[dict]:
-        result, _ = self._predict(image_path)
-        logger.info(f"Detected {len(result.detections)} objects.")
-        return result.to_dict_list()
+    def get_detected_objects(self, image_path: str) -> dict[str, Any]:
+        try:
+            result, _ = self._predict(image_path)
+            logger.info(f"Detected {len(result.detections)} objects.")
+            return {
+                "detections": result.to_dict_list(),
+                "model_name": result.model_name,
+                "model_version": result.model_version,
+            }
+        except Exception as e:
+            logger.error(f"Detection summary failed for {image_path}: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Detection summary failed: {str(e)}")

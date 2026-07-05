@@ -142,7 +142,9 @@ class TestImageEditService:
 
     def test_process_image_error_handling(self, edit_service):
         """Test error handling in _process_image."""
-        with pytest.raises(ValueError):
+        from fastapi import HTTPException
+
+        with pytest.raises(HTTPException):
             edit_service._process_image(
                 "nonexistent.jpg",
                 lambda img, **kwargs: img,

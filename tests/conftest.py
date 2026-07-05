@@ -30,10 +30,8 @@ from app.storage.local_storage import LocalImageStorage
 from app.services.image.crud_operations import ImageCRUDService
 from app.services.image.metadata_handler import ImageMetadataExtractor
 from app.services.image.image_editor import ImageEditService
+from app.services.image.image_service import ImageService
 from app.services.detection.detection_service import ObjectDetectionService
-from app.managers.image_manager import ImageManager
-from app.managers.edit_manager import EditManager
-from app.managers.detection_manager import DetectionManager
 from app.dependencies.utils import (
     get_directory_manager,
     get_file_path_resolver,
@@ -44,12 +42,8 @@ from app.dependencies.services import (
     get_image_crud_service,
     get_image_metadata_extractor,
     get_image_edit_service,
+    get_image_service,
     get_object_detection_service,
-)
-from app.dependencies.managers import (
-    get_image_manager,
-    get_edit_manager,
-    get_detection_manager,
 )
 
 
@@ -190,7 +184,55 @@ def mock_image_crud_service(temp_directories: Dict[str, Path]) -> Mock:
         return temp_directories.get(folder, temp_directories["uploaded"]) / image_name
     
     mock.get_image_path.side_effect = get_image_path_side_effect
-    mock.list_images.return_value = []
+
+    def list_images_side_effect(
+        folder: str = "uploaded",
+        limit: int = 100,
+        offset: int = 0,
+        subdirectory: str | None = None,
+    ):
+        folder_map = {
+            "uploaded": [temp_directories["uploaded"]],
+            "edited": [temp_directories["edited"]],
+            "detected": [temp_directories["detected"]],
+            "all": list(temp_directories.values()),
+        }
+        if folder not in folder_map:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid folder: {folder}. Valid options: {list(folder_map.keys())}",
+            )
+
+        results = []
+        valid_extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp"}
+
+        for directory in folder_map[folder]:
+            if not directory.exists():
+                continue
+            search_path = directory / subdirectory if subdirectory else directory
+            image_files = [
+                f for f in search_path.rglob("*")
+                if f.suffix.lower() in valid_extensions and f.is_file()
+            ]
+            for img_path in image_files[offset : offset + limit]:
+                try:
+                    with Image.open(img_path) as img:
+                        results.append({
+                            "filename": img_path.name,
+                            "format": img.format,
+                            "mode": img.mode,
+                            "width": img.width,
+                            "height": img.height,
+                            "size_bytes": os.path.getsize(img_path),
+                            "path": str(img_path),
+                            "url": None,
+                            "folder": directory.name,
+                        })
+                except (FileNotFoundError, OSError):
+                    continue
+        return results
+
+    mock.list_images.side_effect = list_images_side_effect
     def get_image_by_id_side_effect(image_id: str, folder: str = "uploaded"):
         image_path = temp_directories.get(folder, temp_directories["uploaded"]) / image_id
         if not image_path.exists():
@@ -223,11 +265,32 @@ def mock_image_crud_service(temp_directories: Dict[str, Path]) -> Mock:
             "deleted_image": {}
         }
     mock.delete_image.side_effect = delete_image_side_effect
-    mock.delete_all_images.return_value = {
-        "status": "success",
-        "message": "All images deleted",
-        "count": 0
-    }
+
+    def delete_all_images_side_effect(folder: str):
+        folder_map = {
+            "uploaded": [temp_directories["uploaded"]],
+            "edited": [temp_directories["edited"]],
+            "detected": [temp_directories["detected"]],
+            "all": list(temp_directories.values()),
+        }
+        if folder not in folder_map:
+            raise HTTPException(status_code=400, detail=f"Invalid folder: {folder}")
+
+        deleted_count = 0
+        valid_extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp"}
+        for directory in folder_map[folder]:
+            if not directory.exists():
+                continue
+            for img_path in directory.rglob("*"):
+                if img_path.suffix.lower() in valid_extensions and img_path.is_file():
+                    img_path.unlink()
+                    deleted_count += 1
+        return {
+            "status": "success",
+            "message": f"Deleted {deleted_count} images from {folder}",
+        }
+
+    mock.delete_all_images.side_effect = delete_all_images_side_effect
     def move_image_side_effect(image_id: str, source_folder: str, target_folder: str):
         source_path = temp_directories.get(source_folder, temp_directories["uploaded"]) / image_id
         target_path = temp_directories.get(target_folder, temp_directories["edited"]) / image_id
@@ -330,7 +393,11 @@ def mock_detection_service(temp_directories: Dict[str, Path]) -> Mock:
     ]
     
     mock.get_bounding_boxes.return_value = str(temp_directories["detected"] / "test_bounding_boxes.jpg")
-    mock.get_detected_objects.return_value = mock_detections
+    mock.get_detected_objects.return_value = {
+        "detections": mock_detections,
+        "model_name": "facebook/detr-resnet-50",
+        "model_version": None,
+    }
     mock.detect_with_visualization.return_value = {
         "image_with_boxes": str(temp_directories["detected"] / "test_bounding_boxes.jpg"),
         "detections": mock_detections,
@@ -402,6 +469,40 @@ def valid_upload_file(upload_file_factory) -> UploadFile:
 
 
 @pytest.fixture
+def mock_image_service(
+    mock_local_storage: Mock,
+    mock_image_crud_service: Mock,
+    mock_metadata_extractor: Mock,
+) -> Mock:
+    """Create a mock ImageService."""
+    mock = Mock(spec=ImageService)
+    mock.local_storage = mock_local_storage
+    mock.image_crud = mock_image_crud_service
+    mock.metadata_extractor = mock_metadata_extractor
+
+    mock.save_uploaded_image.side_effect = (
+        lambda file, filename=None, format="JPEG": mock_local_storage.save(
+            file=file, folder="uploaded", filename=filename, format=format
+        )
+    )
+    mock.get_image_path.side_effect = lambda name, folder="uploaded": str(
+        mock_image_crud_service.get_image_path(name, folder)
+    )
+    mock.get_image_dimensions.side_effect = lambda path: mock_metadata_extractor.get_dimensions(path)
+    mock.get_image_metadata.side_effect = lambda path: mock_metadata_extractor.get_metadata(path)
+    mock.get_image_by_id.side_effect = lambda *args, **kwargs: mock_image_crud_service.get_image_by_id(
+        *args, **kwargs
+    )
+    mock.list_images.side_effect = lambda *args, **kwargs: mock_image_crud_service.list_images(*args, **kwargs)
+    mock.delete_image.side_effect = lambda *args, **kwargs: mock_image_crud_service.delete_image(*args, **kwargs)
+    mock.delete_all_images.side_effect = lambda *args, **kwargs: mock_image_crud_service.delete_all_images(
+        *args, **kwargs
+    )
+    mock.move_image.side_effect = lambda *args, **kwargs: mock_image_crud_service.move_image(*args, **kwargs)
+    return mock
+
+
+@pytest.fixture
 def mock_inference_engine(mock_detr_model):
     """Create a mock InferenceEngine backed by mocked DETR components."""
     from app.services.inference.engine import EngineMetadata, InferenceEngine
@@ -441,6 +542,7 @@ def test_client_with_overrides(
     mock_image_crud_service: Mock,
     mock_local_storage: Mock,
     mock_image_edit_service: Mock,
+    mock_image_service: Mock,
     mock_detection_service: Mock,
     mock_inference_engine: Mock,
 ) -> TestClient:
@@ -468,23 +570,13 @@ def test_client_with_overrides(
     
     def override_get_image_edit_service():
         return mock_image_edit_service
-    
+
+    def override_get_image_service():
+        return mock_image_service
+
     def override_get_object_detection_service():
         return mock_detection_service
-    
-    def override_get_image_manager():
-        return ImageManager(
-            local_storage=mock_local_storage,
-            image_CRUD=mock_image_crud_service,
-            metadata_extractor=mock_metadata_extractor
-        )
-    
-    def override_get_edit_manager():
-        return EditManager(edit_service=mock_image_edit_service)
-    
-    def override_get_detection_manager():
-        return DetectionManager(detection_service=mock_detection_service)
-    
+
     app.dependency_overrides[get_directories] = override_get_directories
     app.dependency_overrides[get_directory_manager] = override_get_directory_manager
     app.dependency_overrides[get_file_path_resolver] = override_get_file_path_resolver
@@ -493,10 +585,8 @@ def test_client_with_overrides(
     app.dependency_overrides[get_image_crud_service] = override_get_image_crud_service
     app.dependency_overrides[get_local_image_storage] = override_get_local_image_storage
     app.dependency_overrides[get_image_edit_service] = override_get_image_edit_service
+    app.dependency_overrides[get_image_service] = override_get_image_service
     app.dependency_overrides[get_object_detection_service] = override_get_object_detection_service
-    app.dependency_overrides[get_image_manager] = override_get_image_manager
-    app.dependency_overrides[get_edit_manager] = override_get_edit_manager
-    app.dependency_overrides[get_detection_manager] = override_get_detection_manager
 
     with patch(
         "app.core.lifespan.InferenceEngine.from_settings",

@@ -39,7 +39,7 @@ class ImageEditService:
             raise
         except Exception as e:
             logger.error(f"Error processing image {image_name}: {e}")
-            raise ValueError(f"Error processing image {image_path}: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to process image: {e}")
 
     def resize_image(self, image_name: str, width: int, height: int) -> str:
         logger.info(f"Resizing image {image_name} to {width}x{height}.")
