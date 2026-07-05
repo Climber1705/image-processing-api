@@ -9,7 +9,7 @@ from app.services.image.metadata_handler import ImageMetadataExtractor
 from app.services.image.crud_operations import ImageCRUDService
 from app.services.detection.detection_service import ObjectDetectionService
 from app.services.inference.engine import InferenceEngine
-from app.services.image.storage.local_storage import LocalImageStorage
+from app.storage.local_storage import LocalImageStorage
 from app.utils.file_operations.directory_utils import DirectoryManager
 from app.utils.file_operations.file_utils import FilePathResolver
 

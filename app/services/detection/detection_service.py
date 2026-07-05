@@ -7,7 +7,7 @@ from PIL import Image
 from typing import Any
 
 from app.core.config import settings
-from app.services.image.storage.local_storage import LocalImageStorage
+from app.storage.local_storage import LocalImageStorage
 from app.services.inference.engine import InferenceEngine
 from app.services.inference.preprocessor import load_image
 from app.services.inference.schemas import DetectionResult

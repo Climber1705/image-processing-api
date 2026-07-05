@@ -26,7 +26,7 @@ from app.core.dependencies import get_directories
 from app.utils.file_operations.directory_utils import DirectoryManager
 from app.utils.file_operations.file_utils import FilePathResolver
 from app.utils.validator.simple_validator import SimpleImageValidator
-from app.services.image.storage.local_storage import LocalImageStorage
+from app.storage.local_storage import LocalImageStorage
 from app.services.image.crud_operations import ImageCRUDService
 from app.services.image.metadata_handler import ImageMetadataExtractor
 from app.services.image.image_editor import ImageEditService

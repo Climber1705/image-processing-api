@@ -5,7 +5,7 @@ from fastapi import UploadFile, HTTPException, status
 from PIL import Image, UnidentifiedImageError
 
 from app.core.logging_config import get_logger
-from app.services.image.storage.base_storage import BaseImageStorage
+from app.storage.base_storage import BaseImageStorage
 from app.utils.file_operations.directory_utils import DirectoryManager
 from app.utils.validator.simple_validator import SimpleImageValidator
 from app.utils.file_operations.file_utils import FilePathResolver

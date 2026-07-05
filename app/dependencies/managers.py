@@ -14,7 +14,7 @@ from app.services.detection.detection_service import ObjectDetectionService
 from app.services.image.image_editor import ImageEditService
 from app.services.image.metadata_handler import ImageMetadataExtractor
 from app.services.image.crud_operations import ImageCRUDService
-from app.services.image.storage.local_storage import LocalImageStorage
+from app.storage.local_storage import LocalImageStorage
 
 def get_detection_manager(
     detection_service: ObjectDetectionService = Depends(get_object_detection_service),

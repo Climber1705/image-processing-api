@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import UploadFile, HTTPException, status
 from io import BytesIO
 
-from app.services.image.storage.local_storage import LocalImageStorage
+from app.storage.local_storage import LocalImageStorage
 
 
 @pytest.mark.unit
