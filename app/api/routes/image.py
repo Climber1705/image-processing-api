@@ -1,7 +1,6 @@
 import asyncio
 from typing import Annotated
-
-from fastapi import APIRouter, Request, UploadFile, status, Depends, Query
+from fastapi import APIRouter, Request, UploadFile, Depends, Query, status
 
 from app.core.rate_limiting import limiter
 from app.core.logging_config import get_logger
