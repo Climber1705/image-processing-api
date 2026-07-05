@@ -1,10 +1,8 @@
-from typing import Dict, Tuple
-from fastapi import HTTPException, UploadFile, status, Depends
-import logging
 import io
+import logging
+from fastapi import HTTPException, UploadFile, status
 
 from app.utils.validator.base_validator import BaseImageValidator
-from app.core.dependencies import get_format_extensions
 
 logger = logging.getLogger("simple_validator")
 
@@ -12,9 +10,9 @@ logger = logging.getLogger("simple_validator")
 class SimpleImageValidator(BaseImageValidator):
     def __init__(
         self,
-        format_extensions: Dict[str, str],
+        format_extensions: dict[str, str],
         max_size_mb: int = 5,
-        allowed_types: Tuple[str, ...] = ("image/jpeg", "image/png"),
+        allowed_types: tuple[str, ...] = ("image/jpeg", "image/png"),
     ):
         self.format_extensions = format_extensions
         self.max_size = max_size_mb * 1024 * 1024
@@ -74,10 +72,3 @@ class SimpleImageValidator(BaseImageValidator):
         extension = self.format_extensions[format]
         logger.info("Retrieved file extension for format %s: %s", format, extension)
         return extension
-
-
-def get_simple_image_validator(
-    format_extensions: Dict[str, str] = Depends(get_format_extensions),
-) -> SimpleImageValidator:
-    logger.debug("Creating SimpleImageValidator instance with provided format extensions")
-    return SimpleImageValidator(format_extensions=format_extensions)
