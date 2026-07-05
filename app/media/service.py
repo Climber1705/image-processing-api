@@ -1,6 +1,5 @@
 import uuid
 from pathlib import Path
-
 from fastapi import UploadFile
 
 from app.core.logging_config import get_logger
@@ -28,13 +27,14 @@ logger = get_logger("image_service")
 
 
 class ImageService:
+    
     def __init__(
         self,
-        image_repository: ImageRepository,
+        repository: ImageRepository,
         storage: BaseImageStorage,
         validator: SimpleImageValidator,
     ) -> None:
-        self.image_repository = image_repository
+        self.repository = repository
         self.storage = storage
         self.validator = validator
 
@@ -53,12 +53,12 @@ class ImageService:
         return f"image{ext}"
 
     def get_or_create_storage_id(self, display_filename: str, folder: str) -> str:
-        existing = self.image_repository.get_by_filename(display_filename, folder)
+        existing = self.repository.get_by_filename(display_filename, folder)
         if existing is not None:
             return existing.id
         return str(uuid.uuid4())
 
-    def save_uploaded_image(
+    def upload_image(
         self, file: UploadFile, filename: str | None = None, format: str = "JPEG"
     ) -> SaveImageResultDTO:
         try:
