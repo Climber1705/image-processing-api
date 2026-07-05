@@ -1,11 +1,17 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
+from app.media.requests import MoveImageRequest
 
-class MoveImageRequest(BaseModel):
-    source_folder: str = Field("uploaded", description="Current folder name")
-    target_folder: str = Field("edited", description="Target folder name")
+__all__ = [
+    "ImageDetailResponse",
+    "ImageListItem",
+    "ImageMetadata",
+    "ImageResponse",
+    "MoveImageRequest",
+    "StatusResponse",
+]
 
 
 class StatusResponse(BaseModel):
