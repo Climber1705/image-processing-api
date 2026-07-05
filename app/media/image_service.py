@@ -27,9 +27,11 @@ class ImageService:
         try:
             logger.info(f"Saving uploaded image: {filename or file.filename}")
             file.file.seek(0)
-            return self.local_storage.save(
+            file_path = self.local_storage.save(
                 file=file.file, folder="uploaded", filename=filename, format=format
             )
+            self.image_crud.register_saved_image(file_path, folder="uploaded")
+            return file_path
         except HTTPException:
             raise
         except Exception as e:

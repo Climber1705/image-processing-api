@@ -23,3 +23,6 @@ htmlcov/
 app/static/uploaded/
 app/static/edited/
 app/static/detected/
+
+# SQLite database files
+app/data/

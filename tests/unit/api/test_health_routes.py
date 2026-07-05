@@ -58,7 +58,7 @@ class TestHealthRoutes:
             model_revision=None,
         )
 
-        with patch("app.api.routes.health_routes._storage_dirs_writable", return_value=False):
+        with patch("app.api.routes.health._storage_dirs_writable", return_value=False):
             response = test_client.get("/health/ready")
 
         assert response.status_code == 503

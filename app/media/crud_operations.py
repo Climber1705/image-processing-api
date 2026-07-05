@@ -3,6 +3,7 @@ from typing import Any
 from pathlib import Path
 from fastapi import HTTPException
 
+from app.db.repository import ImageRepository
 from app.media.utils.directory_utils import DirectoryManager
 from app.media.utils.file_utils import FilePathResolver
 from app.media.metadata_handler import ImageMetadataExtractor
@@ -20,11 +21,13 @@ class ImageCRUDService:
         metadata_extractor: ImageMetadataExtractor,
         file_resolver: FilePathResolver,
         directories: dict[str, Path],
+        image_repository: ImageRepository | None = None,
     ):
         self.directory_manager = directory_manager
         self.metadata_extractor = metadata_extractor
         self.file_resolver = file_resolver
         self.directories = directories
+        self.image_repository = image_repository
 
     def _get_folder_map(self) -> dict[str, list[Path]]:
         return {
@@ -33,6 +36,18 @@ class ImageCRUDService:
             "detected": [self.directories["detected"]],
             "all": list(self.directories.values()),
         }
+
+    def _get_folder_names(self, folder: str) -> list[str]:
+        if folder == "all":
+            return ["uploaded", "edited", "detected"]
+        return [folder]
+
+    def register_saved_image(self, path: str | Path, folder: str) -> dict[str, Any]:
+        if self.image_repository is None:
+            return self.metadata_extractor.get_metadata(Path(path))
+
+        record = self.image_repository.create_from_path(path, folder)
+        return self.image_repository.to_metadata(record)
 
     def delete_image(self, image_id: str, folder: str) -> dict[str, str | dict[str, Any]]:
         directory = self.directory_manager.get_directory(folder)
@@ -43,13 +58,25 @@ class ImageCRUDService:
             raise HTTPException(status_code=404, detail=f"Image {image_id} not found in {folder} folder")
 
         try:
-            image_info = self.metadata_extractor.get_metadata(image_path)
+            if self.image_repository is not None:
+                record = self.image_repository.get_by_filename(image_id, folder)
+                image_info = (
+                    self.image_repository.to_metadata(record)
+                    if record is not None
+                    else self.metadata_extractor.get_metadata(image_path)
+                )
+            else:
+                image_info = self.metadata_extractor.get_metadata(image_path)
+
             metadata_path = image_path.with_suffix(".json")
             if metadata_path.exists():
                 metadata_path.unlink()
                 logger.info(f"Deleted metadata for {image_id}")
 
             image_path.unlink()
+            if self.image_repository is not None:
+                self.image_repository.delete_by_filename(image_id, folder)
+
             logger.info(f"Deleted image {image_id} from {folder}")
 
             return {
@@ -57,6 +84,8 @@ class ImageCRUDService:
                 "message": f"Image {image_id} deleted from {folder}",
                 "deleted_image": image_info,
             }
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Error deleting image: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to delete image: {e}")
@@ -94,6 +123,9 @@ class ImageCRUDService:
             except Exception as e:
                 logger.error(f"Error cleaning directory {directory}: {e}")
 
+        if self.image_repository is not None:
+            self.image_repository.delete_by_folders(self._get_folder_names(folder))
+
         logger.info(f"Deleted {deleted_count} images from {folder}")
         return {
             "status": "success",
@@ -124,14 +156,33 @@ class ImageCRUDService:
                 target_metadata = target_path.with_suffix(".json")
                 shutil.move(str(source_metadata), str(target_metadata))
 
+            if self.image_repository is not None:
+                record = self.image_repository.update_location(
+                    filename=image_id,
+                    source_folder=source_folder,
+                    target_folder=target_folder,
+                    new_path=str(target_path),
+                )
+                if record is not None:
+                    return self.image_repository.to_metadata(record)
+
             logger.info(f"Moved image {image_id} from {source_folder} to {target_folder}")
             return self.metadata_extractor.get_metadata(target_path)
 
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Error moving image: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to move image: {e}")
 
     def get_image_path(self, image_id: str, folder: str) -> Path:
+        if self.image_repository is not None:
+            record = self.image_repository.get_by_filename(image_id, folder)
+            if record is not None:
+                path = Path(record.path)
+                if path.exists():
+                    return path
+
         directory = self.directory_manager.get_directory(folder)
         image_path = directory / image_id
 
@@ -142,6 +193,11 @@ class ImageCRUDService:
         return image_path
 
     def get_image_by_id(self, image_id: str, folder: str) -> dict[str, Any]:
+        if self.image_repository is not None:
+            record = self.image_repository.get_by_filename(image_id, folder)
+            if record is not None:
+                return self.image_repository.to_metadata(record)
+
         image_path = self.get_image_path(image_id, folder)
         return self.metadata_extractor.get_metadata(image_path)
 
@@ -151,6 +207,33 @@ class ImageCRUDService:
         limit: int = 100,
         offset: int = 0,
         subdirectory: str | None = None,
+    ) -> list[ImageListItem]:
+        if subdirectory is not None:
+            return self._list_images_from_filesystem(folder, limit, offset, subdirectory)
+
+        if self.image_repository is not None:
+            records = self.image_repository.list_by_folder(
+                folders=self._get_folder_names(folder),
+                limit=limit,
+                offset=offset,
+            )
+            return [
+                ImageListItem(**{
+                    key: value
+                    for key, value in self.image_repository.to_metadata(record).items()
+                    if key in ImageListItem.model_fields
+                })
+                for record in records
+            ]
+
+        return self._list_images_from_filesystem(folder, limit, offset, subdirectory)
+
+    def _list_images_from_filesystem(
+        self,
+        folder: str,
+        limit: int,
+        offset: int,
+        subdirectory: str | None,
     ) -> list[ImageListItem]:
         folder_map = self._get_folder_map()
 
@@ -188,6 +271,3 @@ class ImageCRUDService:
                 logger.error(f"Error listing images in {directory}: {e}")
 
         return results
-
-
-

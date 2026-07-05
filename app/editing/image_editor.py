@@ -33,6 +33,7 @@ class ImageEditService:
                 processed_img = operation(img, **kwargs)
                 output_path = self._get_output_path(image_path, suffix)
                 processed_img.save(output_path, quality=95)
+                self.image_crud.register_saved_image(output_path, folder="edited")
                 logger.info(f"Successfully processed image {image_name} with {suffix} operation.")
                 return output_path
         except HTTPException:

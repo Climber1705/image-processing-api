@@ -6,6 +6,7 @@ from typing import Any
 
 from app.core.config import settings
 from app.storage.local_storage import LocalImageStorage
+from app.media.crud_operations import ImageCRUDService
 from app.vision.inference.engine import InferenceEngine
 from app.vision.inference.preprocessor import load_image
 from app.vision.inference.schemas import DetectionResult
@@ -21,6 +22,7 @@ class ObjectDetectionService:
         self,
         inference_engine: InferenceEngine,
         local_storage: LocalImageStorage,
+        image_crud: ImageCRUDService | None = None,
         confidence_threshold: float | None = None,
     ) -> None:
         self.engine = inference_engine
@@ -30,6 +32,7 @@ class ObjectDetectionService:
             else settings.CONFIDENCE_THRESHOLD
         )
         self.local_storage = local_storage
+        self.image_crud = image_crud
 
     @property
     def processor(self):
@@ -68,6 +71,8 @@ class ObjectDetectionService:
                 filename=new_filename,
                 format=save_format,
             )
+            if self.image_crud is not None:
+                self.image_crud.register_saved_image(output_path, folder="detected")
 
             logger.info(f"Bounding boxes saved to: {output_path}")
             logger.info(f"Detection completed for image: {image_path}")
