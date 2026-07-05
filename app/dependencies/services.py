@@ -10,7 +10,7 @@ from app.media.crud_operations import ImageCRUDService
 from app.media.image_service import ImageService
 from app.vision.detection_service import ObjectDetectionService
 from app.vision.inference.engine import InferenceEngine
-from app.media.storage.local_storage import LocalImageStorage
+from app.storage.local_storage import LocalImageStorage
 from app.media.utils.directory_utils import DirectoryManager
 from app.media.utils.file_utils import FilePathResolver
 

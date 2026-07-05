@@ -1,13 +1,11 @@
 import os
 from io import BytesIO
-from tempfile import SpooledTemporaryFile
-
-from fastapi import UploadFile, HTTPException
+from fastapi import HTTPException
 from PIL import Image
 from typing import Any
 
 from app.core.config import settings
-from app.media.storage.local_storage import LocalImageStorage
+from app.storage.local_storage import LocalImageStorage
 from app.vision.inference.engine import InferenceEngine
 from app.vision.inference.preprocessor import load_image
 from app.vision.inference.schemas import DetectionResult
@@ -41,16 +39,11 @@ class ObjectDetectionService:
     def model(self):
         return self.engine.model
 
-    def _pillow_to_uploadfile(self, image: Image.Image, filename: str = "image.png") -> UploadFile:
+    def _image_to_bytesio(self, image: Image.Image) -> BytesIO:
         img_byte_arr = BytesIO()
         image.save(img_byte_arr, format=image.format or "PNG")
         img_byte_arr.seek(0)
-
-        temp_file = SpooledTemporaryFile()
-        temp_file.write(img_byte_arr.read())
-        temp_file.seek(0)
-
-        return UploadFile(filename=filename, file=temp_file)
+        return img_byte_arr
 
     def _predict(self, image_path: str) -> tuple[DetectionResult, Image.Image]:
         image = load_image(image_path)
@@ -70,7 +63,7 @@ class ObjectDetectionService:
             save_format = ext.lstrip(".").upper() or "PNG"
 
             output_path = self.local_storage.save(
-                file=self._pillow_to_uploadfile(annotated, filename=new_filename),
+                file=self._image_to_bytesio(annotated),
                 folder="detected",
                 filename=new_filename,
                 format=save_format,

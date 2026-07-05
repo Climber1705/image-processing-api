@@ -1,11 +1,12 @@
 import os
 import uuid
+from typing import BinaryIO
 from pathlib import Path
-from fastapi import UploadFile, HTTPException, status
+from fastapi import HTTPException, status
 from PIL import Image, UnidentifiedImageError
 
 from app.core.logging_config import get_logger
-from app.media.storage.base_storage import BaseImageStorage
+from app.storage.base_storage import BaseImageStorage
 from app.media.utils.directory_utils import DirectoryManager
 from app.media.utils.validator.simple_validator import SimpleImageValidator
 from app.media.utils.file_utils import FilePathResolver
@@ -33,19 +34,13 @@ class LocalImageStorage(BaseImageStorage):
         filename = Path(filename).stem
         return f"{filename}{ext}"
 
-    def save(
-        self,
-        file: UploadFile,
-        folder: str | None = "uploaded",
-        filename: str | None = None,
-        format: str = "JPEG",
-    ) -> str:
+    def save(self, file: BinaryIO, folder: str | None = "uploaded", filename: str | None = None, format: str = "JPEG") -> str:
         filename = self._get_file_name(filename, format)
         directory = self.directory_manager.get_directory(folder)
-        file_path = directory / filename
+        file_path = directory.joinpath(filename)
 
         try:
-            with Image.open(file.file) as img:
+            with Image.open(file) as img:
                 img.save(file_path, format=format.upper())
             logger.info(f"Saved image: {file_path}")
             return str(file_path)
@@ -62,12 +57,12 @@ class LocalImageStorage(BaseImageStorage):
             logger.error(f"Failed to save image {file_path}: {e}")
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save image")
 
-    def get_url(self, filename: str) -> str:
-        return self.file_resolver.find_file(filename=filename)
+    def get(self, filename: str) -> BinaryIO:
+        file_path = self.file_resolver.find_file(filename=filename)
+        return open(file_path, "rb")
 
-    def delete(self, directory: str, filename: str) -> bool:
-        directory = self.directory_manager.get_directory(directory)
-        file_path = directory / filename
+    def delete(self, filename: str) -> bool:
+        file_path = self.file_resolver.find_file(filename=filename)
 
         try:
             os.remove(file_path)

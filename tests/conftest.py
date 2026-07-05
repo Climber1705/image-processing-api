@@ -26,7 +26,7 @@ from app.core.dependencies import get_directories
 from app.media.utils.directory_utils import DirectoryManager
 from app.media.utils.file_utils import FilePathResolver
 from app.media.utils.validator.simple_validator import SimpleImageValidator
-from app.media.storage.local_storage import LocalImageStorage
+from app.storage.local_storage import LocalImageStorage
 from app.media.crud_operations import ImageCRUDService
 from app.media.metadata_handler import ImageMetadataExtractor
 from app.editing.image_editor import ImageEditService
@@ -335,15 +335,19 @@ def mock_local_storage(temp_directories: Dict[str, Path]) -> Mock:
     """Create a mock LocalImageStorage."""
     mock = Mock(spec=LocalImageStorage)
     
-    def save_side_effect(file: UploadFile, folder: str = "uploaded", filename: str = None, format: str = "JPEG") -> str:
+    def save_side_effect(file, folder: str = "uploaded", filename: str = None, format: str = "JPEG") -> str:
         if filename is None:
             filename = f"{uuid.uuid4()}.jpg"
         file_path = temp_directories[folder] / filename
         file_path.touch()
         return str(file_path)
-    
+
+    def get_side_effect(filename: str):
+        file_path = temp_directories["uploaded"] / filename
+        return open(file_path, "rb")
+
     mock.save.side_effect = save_side_effect
-    mock.get_url.return_value = str(temp_directories["uploaded"] / "test.jpg")
+    mock.get.side_effect = get_side_effect
     mock.delete.return_value = True
     return mock
 

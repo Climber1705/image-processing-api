@@ -2,7 +2,7 @@ from typing import Any
 from pathlib import Path
 from fastapi import UploadFile, HTTPException
 
-from app.media.storage.local_storage import LocalImageStorage
+from app.storage.local_storage import LocalImageStorage
 from app.media.crud_operations import ImageCRUDService
 from app.media.metadata_handler import ImageMetadataExtractor
 from app.core.logging_config import get_logger
@@ -26,7 +26,10 @@ class ImageService:
     ) -> str:
         try:
             logger.info(f"Saving uploaded image: {filename or file.filename}")
-            return self.local_storage.save(file=file, folder="uploaded", filename=filename, format=format)
+            file.file.seek(0)
+            return self.local_storage.save(
+                file=file.file, folder="uploaded", filename=filename, format=format
+            )
         except HTTPException:
             raise
         except Exception as e:
