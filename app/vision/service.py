@@ -90,7 +90,6 @@ class InferenceService:
     def detect(
         self,
         image: bytes,
-        *,
         visualize: bool = False,
         persist: bool = False,
         source_filename: str = "image.jpg",
@@ -101,7 +100,6 @@ class InferenceService:
     def detect_from_path(
         self,
         image_path: str,
-        *,
         visualize: bool = False,
         persist: bool = False,
         source_filename: str | None = None,
