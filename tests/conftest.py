@@ -372,9 +372,31 @@ def valid_upload_file(upload_file_factory) -> UploadFile:
 
 
 @pytest.fixture
-def test_client() -> TestClient:
-    """Create a FastAPI test client."""
-    return TestClient(app)
+def mock_inference_engine(mock_detr_model):
+    """Create a mock InferenceEngine backed by mocked DETR components."""
+    from app.services.inference.engine import EngineMetadata, InferenceEngine
+
+    engine = Mock(spec=InferenceEngine)
+    engine.processor = mock_detr_model["processor"]
+    engine.model = mock_detr_model["model"]
+    engine.metadata = EngineMetadata(
+        model_name="facebook/detr-resnet-50",
+        model_revision=None,
+    )
+    engine.is_ready = True
+    engine.warmup = Mock()
+    return engine
+
+
+@pytest.fixture
+def test_client(mock_inference_engine) -> TestClient:
+    """Create a FastAPI test client with a mocked inference engine."""
+    with patch(
+        "app.core.lifespan.InferenceEngine.from_settings",
+        return_value=mock_inference_engine,
+    ):
+        with TestClient(app) as client:
+            yield client
 
 
 @pytest.fixture
@@ -387,7 +409,8 @@ def test_client_with_overrides(
     mock_image_crud_service: Mock,
     mock_local_storage: Mock,
     mock_image_edit_service: Mock,
-    mock_detection_service: Mock
+    mock_detection_service: Mock,
+    mock_inference_engine: Mock,
 ) -> TestClient:
     """Create a FastAPI test client with dependency overrides."""
     def override_get_directories():
@@ -443,19 +466,22 @@ def test_client_with_overrides(
     app.dependency_overrides[get_image_manager] = override_get_image_manager
     app.dependency_overrides[get_edit_manager] = override_get_edit_manager
     app.dependency_overrides[get_detection_manager] = override_get_detection_manager
-    
-    client = TestClient(app)
-    
-    yield client
-    
+
+    with patch(
+        "app.core.lifespan.InferenceEngine.from_settings",
+        return_value=mock_inference_engine,
+    ):
+        with TestClient(app) as client:
+            yield client
+
     app.dependency_overrides.clear()
 
 
 @pytest.fixture
 def mock_detr_model():
     """Mock the DETR model to avoid loading actual model in tests."""
-    with patch("app.services.detection.detection_service.DetrImageProcessor") as mock_processor, \
-         patch("app.services.detection.detection_service.DetrForObjectDetection") as mock_model:
+    with patch("app.services.inference.engine.DetrImageProcessor") as mock_processor, \
+         patch("app.services.inference.engine.DetrForObjectDetection") as mock_model:
         
         # Mock processor
         mock_processor_instance = Mock()
