@@ -17,6 +17,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     if settings.WARMUP_ON_STARTUP:
         await asyncio.to_thread(app.state.inference_engine.warmup)
+    else:
+        app.state.inference_engine.mark_ready()
 
     logger.info("Inference engine ready")
     yield
