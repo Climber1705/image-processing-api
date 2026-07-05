@@ -7,11 +7,8 @@ from app.core.config import get_settings
 from app.db.base import Base
 from app.models.image import ImageRecord
 
-settings = get_settings()
-
-
 engine = create_engine(
-    settings.DATABASE_URL,
+    get_settings().DATABASE_URL,
     connect_args={"check_same_thread": False},
     pool_pre_ping=True,
 )
