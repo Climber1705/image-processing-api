@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 import warnings
 
 import torch
@@ -7,17 +6,12 @@ from transformers import DetrForObjectDetection, DetrImageProcessor
 
 from app.core.config import Settings
 from app.core.logging_config import get_logger
+from app.vision.inference.mappers import to_detection_result
 from app.vision.inference.postprocessor import postprocess
 from app.vision.inference.preprocessor import preprocess
-from app.vision.inference.schemas import DetectionResult
+from app.vision.inference.schemas import DetectionResult, EngineMetadata
 
 logger = get_logger("inference_engine")
-
-
-@dataclass(frozen=True, slots=True)
-class EngineMetadata:
-    model_name: str
-    model_revision: str | None
 
 
 class InferenceEngine:
@@ -101,11 +95,7 @@ class InferenceEngine:
             confidence_threshold,
         )
 
-        return DetectionResult(
-            detections=detections,
-            model_name=self.metadata.model_name,
-            model_version=self.metadata.model_revision,
-        )
+        return to_detection_result(detections, self.metadata)
 
     @property
     def is_ready(self) -> bool:

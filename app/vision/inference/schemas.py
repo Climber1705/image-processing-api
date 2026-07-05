@@ -7,13 +7,6 @@ class Detection:
     confidence: float
     box: list[float]
 
-    def to_dict(self) -> dict:
-        return {
-            "label": self.label,
-            "confidence": self.confidence,
-            "box": self.box,
-        }
-
 
 @dataclass(frozen=True, slots=True)
 class DetectionResult:
@@ -21,5 +14,8 @@ class DetectionResult:
     model_name: str
     model_version: str | None
 
-    def to_dict_list(self) -> list[dict]:
-        return [d.to_dict() for d in self.detections]
+
+@dataclass(frozen=True, slots=True)
+class EngineMetadata:
+    model_name: str
+    model_revision: str | None
