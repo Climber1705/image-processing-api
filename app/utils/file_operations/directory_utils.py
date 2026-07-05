@@ -1,15 +1,13 @@
-from typing import Dict
 from pathlib import Path
-from fastapi import HTTPException, status, Depends
+from fastapi import HTTPException, status
 
 from app.core.logging_config import get_logger
-from app.core.dependencies import get_directories
 
 logger = get_logger("directory_utils")
 
 
 class DirectoryManager:
-    def __init__(self, directories: Dict[str, Path]):
+    def __init__(self, directories: dict[str, Path]):
         self.directories = directories
         logger.info("Initializing DirectoryManager with directories: %s", self.directories)
         self._create_directories()
@@ -40,10 +38,3 @@ class DirectoryManager:
             )
         logger.info(f"Returning directory path for folder: {folder}")
         return self.directories[folder]
-
-
-def get_directory_manager(
-    directories: Dict[str, Path] = Depends(get_directories),
-) -> DirectoryManager:
-    logger.debug("Creating DirectoryManager instance with directories: %s", directories)
-    return DirectoryManager(directories=directories)
