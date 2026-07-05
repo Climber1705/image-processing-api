@@ -1,16 +1,17 @@
-from transformers import DetrImageProcessor, DetrForObjectDetection
-from typing import List, Dict, Tuple, Annotated, Union
-from PIL import Image, ImageDraw, ImageFont
-from tempfile import SpooledTemporaryFile
-from fastapi import Depends, UploadFile
-from random import randint
-from io import BytesIO
-
-import warnings
-import torch
 import os
+import torch
+from io import BytesIO
+from random import randint
+from tempfile import SpooledTemporaryFile
+from fastapi import Depends, Request, UploadFile
+from PIL import Image, ImageDraw, ImageFont
+from typing import List, Dict, Tuple, Annotated, Union
 
+
+
+from app.core.config import settings
 from app.services.image.storage.local_storage import LocalImageStorage, get_local_image_storage
+from app.services.inference.engine import InferenceEngine
 from app.core.logging_config import get_logger
 
 LocalImageStorageDep = Annotated[LocalImageStorage, Depends(get_local_image_storage)]
@@ -19,11 +20,20 @@ logger = get_logger("detection_service")
 
 
 class ObjectDetectionService:
-    def __init__(self, local_storage: LocalImageStorageDep):
-        warnings.filterwarnings("ignore", category=UserWarning, module="torch")
-        self.processor = DetrImageProcessor.from_pretrained("facebook/detr-resnet-50")
-        self.model = DetrForObjectDetection.from_pretrained("facebook/detr-resnet-50", ignore_mismatched_sizes=True)
-        self.confidence_threshold = 0.5
+    def __init__(
+        self,
+        inference_engine: InferenceEngine,
+        local_storage: LocalImageStorage,
+        confidence_threshold: float | None = None,
+    ) -> None:
+        self.engine = inference_engine
+        self.processor = inference_engine.processor
+        self.model = inference_engine.model
+        self.confidence_threshold = (
+            confidence_threshold
+            if confidence_threshold is not None
+            else settings.CONFIDENCE_THRESHOLD
+        )
         self.local_storage = local_storage
 
     def _get_font(self, size: int):
@@ -120,5 +130,15 @@ class ObjectDetectionService:
         return detections
 
 
-def get_object_detection_service(local_storage: LocalImageStorageDep) -> ObjectDetectionService:
-    return ObjectDetectionService(local_storage=local_storage)
+def get_object_detection_service(
+    request: Request,
+    local_storage: LocalImageStorageDep,
+) -> ObjectDetectionService:
+    inference_engine: InferenceEngine | None = getattr(request.app.state, "inference_engine", None)
+    if inference_engine is None:
+        raise RuntimeError("Inference engine is not initialized")
+
+    return ObjectDetectionService(
+        inference_engine=inference_engine,
+        local_storage=local_storage,
+    )
