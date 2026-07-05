@@ -1,16 +1,15 @@
-from fastapi import Depends, HTTPException
-from typing import Annotated, Callable, Any, Dict
+from fastapi import HTTPException
+from typing import Any, Callable
 
-from app.services.image.image_editor import ImageEditService, get_image_edit_service
+from app.services.image.image_editor import ImageEditService
 from app.core.logging_config import get_logger
 
 logger = get_logger("edit_manager")
 
-ImageEditServiceDep = Annotated[ImageEditService, Depends(get_image_edit_service)]
-
 
 class EditManager:
-    def __init__(self, edit_service: ImageEditServiceDep):
+    
+    def __init__(self, edit_service: ImageEditService):
         self.edit_service = edit_service
 
     def apply_resize(self, image_name: str, width: int, height: int) -> str:
@@ -41,7 +40,7 @@ class EditManager:
         logger.info(f"Adjusting contrast of image '{image_name}' by factor={factor}")
         return self.edit_service.adjust_contrast(image_name, factor)
 
-    def apply_bulk_edits(self, image_name: str, edits: Dict[str, Any]) -> Dict[str, str]:
+    def apply_bulk_edits(self, image_name: str, edits: dict[str, Any]) -> dict[str, str]:
         logger.info(f"Applying bulk edits to '{image_name}': {edits}")
         results = {}
 
@@ -104,7 +103,3 @@ class EditManager:
         except Exception as e:
             logger.error(f"Error processing '{image_name}' with '{method_name}': {e}")
             raise HTTPException(status_code=500, detail=f"Failed to process image: {str(e)}")
-
-
-def get_edit_manager(edit_service: ImageEditServiceDep) -> EditManager:
-    return EditManager(edit_service=edit_service)
