@@ -58,17 +58,14 @@ class Settings(BaseSettings):
 
     @property
     def directories(self) -> dict[str, Path]:
-        dirs = {
+        return {
             ImageFolder.UPLOADED: self.UPLOADED_FOLDER,
             ImageFolder.EDITED: self.EDITED_FOLDER,
             ImageFolder.DETECTED: self.DETECTED_FOLDER,
         }
-        logger.debug("Configured directories: %s", dirs)
-        return dirs
 
     @property
     def format_extensions(self) -> dict[str, str]:
-        logger.debug("Supported format extensions: %s", self.FORMAT_EXTENSIONS)
         return self.FORMAT_EXTENSIONS
 
     def setup(self) -> None:
@@ -76,8 +73,6 @@ class Settings(BaseSettings):
             if not path.exists():
                 path.mkdir(parents=True, exist_ok=True)
                 logger.info("Created directory: %s", path)
-            else:
-                logger.debug("Directory already exists: %s", path)
 
         if self.DATABASE_URL.startswith("sqlite:///./"):
             db_path = Path(self.DATABASE_URL.removeprefix("sqlite:///./"))

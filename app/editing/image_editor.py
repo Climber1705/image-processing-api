@@ -61,16 +61,14 @@ class ImageEditService:
                     display_filename=display_filename,
                     image_id=storage_id,
                 )
-                logger.info(f"Successfully processed image {image_name} with {suffix} operation.")
                 return output_path
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Error processing image {image_name}: {e}")
+            logger.error("Error processing image %s: %s", image_name, e)
             raise HTTPException(status_code=500, detail=f"Failed to process image: {e}")
 
     def resize_image(self, image_name: str, width: int, height: int) -> str:
-        logger.info(f"Resizing image {image_name} to {width}x{height}.")
         return self._process_image(
             image_name,
             lambda img, **kwargs: img.resize((kwargs["width"], kwargs["height"]), Image.LANCZOS),
@@ -80,7 +78,6 @@ class ImageEditService:
         )
 
     def convert_to_grayscale(self, image_name: str) -> str:
-        logger.info(f"Converting image {image_name} to grayscale.")
         from PIL import ImageOps
 
         return self._process_image(
@@ -90,7 +87,6 @@ class ImageEditService:
         )
 
     def rotate_image(self, image_name: str, degrees: int, expand: bool = False) -> str:
-        logger.info(f"Rotating image {image_name} by {degrees} degrees. Expand: {expand}.")
         return self._process_image(
             image_name,
             lambda img, **kwargs: img.rotate(kwargs["degrees"], expand=kwargs["expand"], resample=Image.BICUBIC),
@@ -100,7 +96,6 @@ class ImageEditService:
         )
 
     def blur_image(self, image_name: str, radius: float = 2.0) -> str:
-        logger.info(f"Applying blur to image {image_name} with radius {radius}.")
         from PIL import ImageFilter
 
         return self._process_image(
@@ -111,7 +106,6 @@ class ImageEditService:
         )
 
     def sharpen_image(self, image_name: str, factor: float = 2.0, radius: float = 2.0, threshold: int = 3) -> str:
-        logger.info(f"Sharpening image {image_name} with factor {factor}, radius {radius}, threshold {threshold}.")
         from PIL import ImageFilter
 
         return self._process_image(
@@ -130,7 +124,6 @@ class ImageEditService:
         )
 
     def adjust_brightness(self, image_name: str, factor: float) -> str:
-        logger.info(f"Adjusting brightness of image {image_name} by factor {factor}.")
         from PIL import ImageOps
 
         return self._process_image(
@@ -141,7 +134,6 @@ class ImageEditService:
         )
 
     def adjust_contrast(self, image_name: str, factor: float) -> str:
-        logger.info(f"Adjusting contrast of image {image_name} by factor {factor}.")
         from PIL import ImageEnhance
 
         return self._process_image(

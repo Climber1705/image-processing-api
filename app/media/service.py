@@ -51,7 +51,6 @@ class ImageService:
         validated_format = validate_image_format(output_format, self.settings.format_extensions)
         extension = get_format_extension(validated_format, self.settings.format_extensions)
         display_filename = get_display_filename(filename, file.filename, extension)
-        logger.info("Saving uploaded image as %s", display_filename)
 
         file.file.seek(0)
         content_hash = compute_checksum(file.file)
@@ -102,7 +101,6 @@ class ImageService:
     def get_image_path(self, filename: str, folder: str = ImageFolder.UPLOADED) -> Path:
         record = self.repository.get_by_filename(filename, folder)
         if record is None:
-            logger.warning("Image %s not found in %s", filename, folder)
             raise ImageNotFoundError(f"Image {filename} not found in {folder}")
 
         path = Path(record.path)
@@ -115,10 +113,8 @@ class ImageService:
         filename: str,
         folder: str = ImageFolder.UPLOADED,
     ) -> ImageDTO:
-        logger.debug("Getting image by filename: %s", filename)
         record = self.repository.get_by_filename(filename, folder)
         if record is None:
-            logger.warning("Image %s not found in %s", filename, folder)
             raise ImageNotFoundError(f"Image {filename} not found in {folder}")
         return record_to_dto(record)
 
@@ -128,7 +124,6 @@ class ImageService:
         limit: int = 100,
         offset: int = 0,
     ) -> list[ImageDTO]:
-        logger.debug("Listing images in folder: %s, limit=%s, offset=%s", folder, limit, offset)
         records = self.repository.list_by_folder(
             folders=ImageFolder.get_folder_names(folder),
             limit=limit,
@@ -137,10 +132,8 @@ class ImageService:
         return [record_to_dto(record) for record in records]
 
     def delete_image(self, filename: str, folder: str = ImageFolder.UPLOADED) -> DeleteImageResultDTO:
-        logger.info("Deleting image %s from folder %s", filename, folder)
         record = self.repository.get_by_filename(filename, folder)
         if record is None:
-            logger.warning("Image %s not found in %s", filename, folder)
             raise ImageNotFoundError(f"Image {filename} not found in {folder}")
 
         deleted_image = record_to_dto(record)
@@ -150,7 +143,6 @@ class ImageService:
             raise ImageNotFoundError(f"Image {filename} not found in {folder} folder")
 
         self.repository.delete_by_filename(filename, folder)
-        logger.info("Deleted image %s from %s", filename, folder)
         return DeleteImageResultDTO(
             status="success",
             message=f"Image {filename} deleted from {folder}",
@@ -160,7 +152,6 @@ class ImageService:
     def delete_images(self, folder: str) -> OperationStatusDTO:
         logger.warning("Deleting all images in folder: %s", folder)
         if folder not in FolderFilter.values():
-            logger.warning("Invalid folder: %s", folder)
             raise InvalidFolderError(f"Invalid folder: {folder}")
 
         records = self.repository.list_all_by_folders(ImageFolder.get_folder_names(folder))
@@ -176,21 +167,17 @@ class ImageService:
                 logger.warning("Failed to delete %s: %s", record.path, exc)
 
         self.repository.delete_by_folders(ImageFolder.get_folder_names(folder))
-        logger.info("Deleted %s images from %s", deleted_count, folder)
         return OperationStatusDTO(
             status="success",
             message=f"Deleted {deleted_count} images from {folder}",
         )
 
     def move_image(self, filename: str, source_folder: str, target_folder: str) -> ImageDTO:
-        logger.info("Moving image %s from %s to %s", filename, source_folder, target_folder)
         if source_folder == target_folder:
-            logger.warning("Source and target folders cannot be the same")
             raise InvalidMoveError("Source and target folders cannot be the same")
 
         record = self.repository.get_by_filename(filename, source_folder)
         if record is None:
-            logger.warning("Image %s not found in %s", filename, source_folder)
             raise ImageNotFoundError(f"Image {filename} not found in {source_folder}")
 
         if not self.storage.exists(record.path):
@@ -198,7 +185,6 @@ class ImageService:
 
         destination_path = self.storage.destination_path(record.path, target_folder)
         if self.storage.exists(destination_path):
-            logger.warning("Image %s already exists in %s", filename, target_folder)
             raise ImageConflictError(f"Image {filename} already exists in {target_folder}")
 
         try:
@@ -211,7 +197,6 @@ class ImageService:
             )
             if updated_image is None:
                 raise ImageOperationError("Failed to update image location")
-            logger.info("Moved image %s from %s to %s", filename, source_folder, target_folder)
             return updated_image
         except (ImageNotFoundError, ImageConflictError, InvalidMoveError, ImageOperationError):
             raise

@@ -48,19 +48,18 @@ class LocalImageStorage(BaseImageStorage):
         try:
             with Image.open(file) as img:
                 img.save(file_path, format=validated_format.upper())
-            logger.info(f"Saved image: {file_path}")
             return str(file_path)
 
         except UnidentifiedImageError:
             if file_path.exists():
                 os.remove(file_path)
-            logger.error(f"Uploaded file is not a valid image: {file_path}")
+            logger.error("Uploaded file is not a valid image: %s", file_path)
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is not a valid image")
 
         except Exception as e:
             if file_path.exists():
                 os.remove(file_path)
-            logger.error(f"Failed to save image {file_path}: {e}")
+            logger.error("Failed to save image %s: %s", file_path, e)
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save image")
 
     def read(self, path: str | Path) -> BinaryIO:
@@ -73,18 +72,15 @@ class LocalImageStorage(BaseImageStorage):
         file_path = Path(path)
         try:
             os.remove(file_path)
-            logger.info(f"Deleted image: {file_path}")
             return True
         except FileNotFoundError:
-            logger.warning(f"Tried to delete missing file: {file_path}")
             return False
         except Exception as e:
-            logger.error(f"Error deleting file {file_path}: {e}")
+            logger.error("Error deleting file %s: %s", file_path, e)
             return False
 
     def move(self, source: str | Path, target_folder: str) -> str:
         source_path = Path(source)
         dest_path = self.destination_path(source_path, target_folder)
         shutil.move(str(source_path), str(dest_path))
-        logger.info(f"Moved image from {source_path} to {dest_path}")
         return str(dest_path)

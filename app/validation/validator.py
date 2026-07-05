@@ -19,7 +19,6 @@ def validate_image_type(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Unsupported file type.",
         )
-    logger.info("Validated image type: %s", image.content_type)
 
 
 def validate_image_size(
@@ -43,7 +42,6 @@ def validate_image_size(
                 max_size_bytes // (1024 * 1024)
             ),
         )
-    logger.info("Validated image size: %d bytes", file_size)
 
 
 def validate_upload(
@@ -52,13 +50,8 @@ def validate_upload(
     allowed_types: tuple[str, ...] = DEFAULT_ALLOWED_TYPES,
     max_size_mb: int = DEFAULT_MAX_SIZE_MB,
 ) -> None:
-    try:
-        logger.debug("Validating image with content type: %s", image.content_type)
-        validate_image_type(image, allowed_types)
-        validate_image_size(image, max_size_mb * 1024 * 1024)
-    except HTTPException as e:
-        logger.error("Validation failed: %s", e.detail)
-        raise
+    validate_image_type(image, allowed_types)
+    validate_image_size(image, max_size_mb * 1024 * 1024)
 
 
 def validate_image_format(format: str, format_extensions: dict[str, str]) -> str:
@@ -77,16 +70,9 @@ def validate_image_format(format: str, format_extensions: dict[str, str]) -> str
                 f"Supported formats: {supported_formats}"
             ),
         )
-    logger.info("Validated image format: %s", format)
     return format
 
 
 def get_format_extension(format: str, format_extensions: dict[str, str]) -> str:
     format = validate_image_format(format, format_extensions)
-    extension = format_extensions[format]
-    logger.info(
-        "Retrieved file extension for format %s: %s",
-        format,
-        extension,
-    )
-    return extension
+    return format_extensions[format]

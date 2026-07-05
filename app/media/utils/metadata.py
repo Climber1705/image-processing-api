@@ -4,10 +4,7 @@ from pathlib import Path
 from PIL import Image
 from fastapi import HTTPException
 
-from app.core.logging_config import get_logger
 from app.media.domain.dtos import FileMetadataDTO
-
-logger = get_logger("metadata")
 
 
 def get_image_dimensions(image_path: Path) -> tuple[int, int]:
@@ -15,10 +12,8 @@ def get_image_dimensions(image_path: Path) -> tuple[int, int]:
         with Image.open(image_path) as image:
             return image.width, image.height
     except FileNotFoundError:
-        logger.error("Image not found: %s", image_path)
         raise HTTPException(status_code=404, detail="Image not found")
     except Exception as exc:
-        logger.error("Error getting image dimensions: %s", exc)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get image dimensions: {exc}",
@@ -39,10 +34,8 @@ def get_image_metadata(image_path: Path) -> FileMetadataDTO:
                 url=None,
             )
     except FileNotFoundError:
-        logger.error("Image not found: %s", image_path)
         raise HTTPException(status_code=404, detail="Image not found")
     except Exception as exc:
-        logger.error("Error getting image info: %s", exc)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get image info: {exc}",

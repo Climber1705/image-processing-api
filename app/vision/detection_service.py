@@ -66,7 +66,6 @@ class ObjectDetectionService:
 
     def detect_with_visualization(self, image_path: str, source_filename: str) -> dict[str, Any]:
         try:
-            logger.info(f"Starting object detection on image: {image_path}")
             result, image = self._predict(image_path)
 
             annotated = draw_bounding_boxes(image, result.detections)
@@ -90,8 +89,6 @@ class ObjectDetectionService:
                 image_id=storage_id,
             )
 
-            logger.info(f"Bounding boxes saved to: {output_path}")
-            logger.info(f"Detection completed for image: {image_path}")
             return {
                 "image_with_boxes": output_path,
                 "detections": result.to_dict_list(),
@@ -99,7 +96,7 @@ class ObjectDetectionService:
                 "model_version": result.model_version,
             }
         except Exception as e:
-            logger.error(f"Object detection failed for {image_path}: {str(e)}")
+            logger.error("Object detection failed for %s: %s", image_path, e)
             raise HTTPException(status_code=500, detail=f"Object detection failed: {str(e)}")
 
     def get_bounding_boxes(self, image_path: str, source_filename: str) -> str:
@@ -109,12 +106,11 @@ class ObjectDetectionService:
     def get_detected_objects(self, image_path: str) -> dict[str, Any]:
         try:
             result, _ = self._predict(image_path)
-            logger.info(f"Detected {len(result.detections)} objects.")
             return {
                 "detections": result.to_dict_list(),
                 "model_name": result.model_name,
                 "model_version": result.model_version,
             }
         except Exception as e:
-            logger.error(f"Detection summary failed for {image_path}: {str(e)}")
+            logger.error("Detection summary failed for %s: %s", image_path, e)
             raise HTTPException(status_code=500, detail=f"Detection summary failed: {str(e)}")
