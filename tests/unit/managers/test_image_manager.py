@@ -13,10 +13,9 @@ class TestImageManager:
     """Test cases for ImageManager."""
 
     @pytest.fixture
-    def image_manager(self, mock_directory_manager, mock_local_storage, mock_image_crud_service, mock_metadata_extractor):
+    def image_manager(self, mock_local_storage, mock_image_crud_service, mock_metadata_extractor):
         """Create ImageManager with mocked dependencies."""
         return ImageManager(
-            directory_manager=mock_directory_manager,
             local_storage=mock_local_storage,
             image_CRUD=mock_image_crud_service,
             metadata_extractor=mock_metadata_extractor

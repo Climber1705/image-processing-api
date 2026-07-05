@@ -31,6 +31,13 @@ class Settings(BaseSettings):
     EDITED_FOLDER: Path = Field(default_factory=lambda: Path("app/static/edited"))
     DETECTED_FOLDER: Path = Field(default_factory=lambda: Path("app/static/detected"))
 
+    MODEL_NAME: str = "facebook/detr-resnet-50"
+    MODEL_REVISION: str | None = None
+    CONFIDENCE_THRESHOLD: float = 0.5
+    INFERENCE_DEVICE: str = "cpu"
+    MAX_IMAGE_DIMENSION: int = 1333
+    WARMUP_ON_STARTUP: bool = True
+
     model_config = ConfigDict(
         env_file=".env",
         extra="allow",

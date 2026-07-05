@@ -42,18 +42,13 @@ RUN apt-get purge -y build-essential libjpeg-dev zlib1g-dev libpng-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-RUN find /usr/local/lib/python3.12 -type d -name __pycache__ -exec rm -r {} + 2>/dev/null || true && \
-    find /usr/local/lib/python3.12 -name "*.pyc" -delete && \
-    find /usr/local/lib/python3.12 -name "*.pyo" -delete && \
-    rm -rf /root/.cache/pip
-
 EXPOSE 8000
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:8000/health/ready || exit 1
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
