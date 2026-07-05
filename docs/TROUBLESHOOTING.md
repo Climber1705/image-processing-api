@@ -75,7 +75,7 @@ Common issues and their solutions for the Image Processing API.
 **Solutions**:
 - Ensure Docker has enough disk space (at least 10GB free)
 - Check Docker logs: `docker-compose logs`
-- Verify all files are present (requirements.txt, Dockerfile, etc.)
+- Verify all files are present (pyproject.toml, Dockerfile, etc.)
 - Try rebuilding without cache: `docker-compose build --no-cache`
 - Ensure tests pass locally before building Docker image
 
@@ -87,7 +87,7 @@ Common issues and their solutions for the Image Processing API.
 - Run tests locally to see detailed error messages: `pytest -v`
 - Check test coverage report: `pytest --cov=app --cov-report=html`
 - Review `htmlcov/index.html` to see which code is not covered
-- Ensure all test dependencies are installed: `pip install -r requirements.txt`
+- Ensure all test dependencies are installed: `pip install -e ".[test]"`
 - Check that test files are in the correct location (`tests/` directory)
 
 ## Logs Not Appearing
