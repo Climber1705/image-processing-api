@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """Measure DETR inference latency on CPU for docs/ML_SERVING.md."""
 
-from __future__ import annotations
-
 import argparse
 import statistics
 import sys
@@ -12,9 +10,10 @@ from pathlib import Path
 # Allow running as `python scripts/benchmark_inference.py` from repo root.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.core.config import get_settings
-from app.vision.inference.engine import InferenceEngine
 from PIL import Image
+
+from app.core.config import settings
+from app.vision.inference.engine import InferenceEngine
 
 
 def get_percentile(sorted_values: list[float], pct: float) -> float:
@@ -60,7 +59,6 @@ def main() -> int:
     parser.add_argument("--warmup", type=int, default=1, help="Warmup runs per image size.")
     args = parser.parse_args()
 
-    settings = get_settings()
     print(f"Loading model {settings.MODEL_NAME} on {settings.INFERENCE_DEVICE}...")
     engine = InferenceEngine.from_settings(settings)
     engine.warmup()
