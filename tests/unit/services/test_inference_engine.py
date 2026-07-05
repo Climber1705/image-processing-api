@@ -4,9 +4,12 @@ Unit tests for InferenceEngine lifecycle.
 
 import pytest
 from unittest.mock import Mock, patch
+from PIL import Image
+import torch
 
 from app.core.config import settings
 from app.services.inference.engine import EngineMetadata, InferenceEngine
+from app.services.inference.schemas import Detection
 
 
 @pytest.mark.unit
@@ -54,6 +57,57 @@ class TestInferenceEngine:
 
         assert engine.is_ready is True
         mock_model.assert_called_once()
+
+    def test_mark_ready_without_warmup(self, mock_detr_components):
+        mock_processor, mock_model = mock_detr_components
+        engine = InferenceEngine(
+            processor=mock_processor,
+            model=mock_model,
+            metadata=EngineMetadata(
+                model_name=settings.MODEL_NAME,
+                model_revision=settings.MODEL_REVISION,
+            ),
+            device=settings.INFERENCE_DEVICE,
+        )
+
+        engine.mark_ready()
+
+        assert engine.is_ready is True
+
+    def test_predict_single_forward_pass(self, mock_detr_components):
+        mock_processor, mock_model = mock_detr_components
+        mock_processor.return_value = {"pixel_values": torch.zeros(1, 3, 64, 64)}
+        mock_model.return_value = Mock()
+
+        def mock_post_process(outputs, target_sizes, threshold):
+            return [{
+                "scores": torch.tensor([0.95]),
+                "labels": torch.tensor([1]),
+                "boxes": torch.tensor([[10.0, 20.0, 30.0, 40.0]]),
+            }]
+
+        mock_processor.post_process_object_detection = mock_post_process
+
+        engine = InferenceEngine(
+            processor=mock_processor,
+            model=mock_model,
+            metadata=EngineMetadata(
+                model_name=settings.MODEL_NAME,
+                model_revision=settings.MODEL_REVISION,
+            ),
+            device=settings.INFERENCE_DEVICE,
+        )
+
+        image = Image.new("RGB", (100, 100), color="red")
+        result = engine.predict(image, confidence_threshold=0.5)
+
+        assert mock_model.call_count == 1
+        assert engine.inference_count == 1
+        assert len(result.detections) == 1
+        assert result.detections[0].label == "person"
+        assert result.detections[0].confidence == pytest.approx(0.95)
+        assert result.detections[0].box == [10.0, 20.0, 30.0, 40.0]
+        assert result.model_name == settings.MODEL_NAME
 
     def test_get_object_detection_service_uses_shared_engine(
         self, mock_local_storage, mock_inference_engine
