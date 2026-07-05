@@ -1,7 +1,6 @@
-from fastapi import Depends
-
 from app.core.config import Settings, get_settings
 from app.storage.local_storage import LocalImageStorage
+from fastapi import Depends
 
 
 def get_local_image_storage(

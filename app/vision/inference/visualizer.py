@@ -11,7 +11,7 @@ logger = get_logger("visualizer")
 def get_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     try:
         return ImageFont.truetype("arial.ttf", size)
-    except IOError:
+    except OSError:
         logger.warning("Arial font not found, using default font.")
         return ImageFont.load_default()
 

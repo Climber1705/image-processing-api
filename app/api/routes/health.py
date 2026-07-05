@@ -4,7 +4,6 @@ from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.storage.directories import storage_dirs_writable
 
-
 router = APIRouter(tags=["System"])
 
 @router.get("/")

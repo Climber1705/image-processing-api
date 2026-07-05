@@ -3,10 +3,9 @@ Unit tests for image metadata helpers.
 """
 
 import pytest
-from PIL import Image
-
 from app.media.domain.errors import ImageNotFoundError, ImageOperationError
 from app.media.utils.metadata import get_image_metadata
+from PIL import Image
 
 
 @pytest.mark.unit

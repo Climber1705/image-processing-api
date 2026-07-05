@@ -2,9 +2,9 @@
 Unit tests for health check endpoints.
 """
 
-import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
+import pytest
 from app.vision.inference.engine import EngineMetadata
 
 

@@ -79,7 +79,7 @@ class InferenceService:
             storage_id=storage_id,
             format=save_format,
         )
-        self.image_repository.upsert_record(
+        self.image_repository.upsert(
             path=output_path,
             folder=ImageFolder.DETECTED,
             display_filename=display_filename,

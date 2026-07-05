@@ -2,16 +2,16 @@
 Unit tests for ImageEditService.
 """
 
-import pytest
 from pathlib import Path
 from unittest.mock import Mock
-from PIL import Image
 
+import pytest
 from app.editing.domain.errors import ImageEditError
 from app.editing.filename import build_display_filename
 from app.editing.service import ImageEditService
 from app.media.domain.dtos import ImageDTO
 from app.storage.local_storage import LocalImageStorage
+from PIL import Image
 
 
 def _make_image_dto(**overrides) -> ImageDTO:
@@ -47,7 +47,7 @@ class TestImageEditService:
 
         mock_image_repository = Mock()
         mock_image_repository.get_or_create_image_id.return_value = "11111111-1111-1111-1111-111111111111"
-        mock_image_repository.upsert_record.side_effect = lambda **kwargs: _make_image_dto(
+        mock_image_repository.upsert.side_effect = lambda **kwargs: _make_image_dto(
             path=str(kwargs["path"]),
             filename=kwargs["display_filename"],
             id=kwargs["image_id"],
@@ -87,8 +87,8 @@ class TestImageEditService:
             assert resized_img.width == 400
             assert resized_img.height == 300
 
-        edit_service.image_repository.upsert_record.assert_called_once()
-        call_kwargs = edit_service.image_repository.upsert_record.call_args.kwargs
+        edit_service.image_repository.upsert.assert_called_once()
+        call_kwargs = edit_service.image_repository.upsert.call_args.kwargs
         assert call_kwargs["display_filename"] == "test_resize_resized.jpg"
 
     def test_rotate_image(self, edit_service, temp_directories):

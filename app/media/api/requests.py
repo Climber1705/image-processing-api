@@ -1,9 +1,9 @@
-from fastapi import Form
-from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Literal
 
+from fastapi import Form
+from pydantic import BaseModel, Field, field_validator, model_validator
+
 from app.media.domain.enums import FolderFilter, ImageFolder
-7
 
 ImageFormat = Literal["JPEG", "JPG", "PNG", "GIF", "BMP", "TIFF", "WEBP"]
 

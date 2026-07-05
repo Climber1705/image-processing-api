@@ -9,40 +9,39 @@ This module provides common fixtures used across all tests including:
 - Mock ML models to avoid loading actual models
 """
 
-import pytest
+import os
 import shutil
 import uuid
-import os
-from pathlib import Path
-from typing import Dict
-from unittest.mock import Mock, patch
 from io import BytesIO
-from PIL import Image
-from fastapi import UploadFile, status
-from fastapi.testclient import TestClient
+from pathlib import Path
+from unittest.mock import Mock, patch
 
-from app.main import app
-from app.storage.directories import DirectoryManager
-from app.storage.local_storage import LocalImageStorage
-from app.media.service import ImageService
-from app.media.domain.errors import (
-    ImageConflictError,
-    ImageNotFoundError,
-    InvalidFolderError,
-)
-from app.editing.domain.dtos import EditResultDTO
-from app.editing.service import ImageEditService
-from app.vision.domain.dtos import DetectResponseDTO, DetectionDTO, InferenceMetadataDTO
-from app.vision.domain.errors import InvalidInputError
-from app.vision.service import InferenceService
-from app.dependencies.storage import get_local_image_storage
+import pytest
+from app.core.config import Settings, get_settings
+from app.db.session import get_db
 from app.dependencies.services import (
     get_image_edit_service,
     get_image_service,
     get_inference_service,
 )
-from app.core.config import Settings, get_settings
-from app.db.session import get_db
+from app.dependencies.storage import get_local_image_storage
+from app.editing.domain.dtos import EditResultDTO
+from app.editing.service import ImageEditService
+from app.main import app
+from app.media.domain.errors import (
+    ImageConflictError,
+    ImageNotFoundError,
+    InvalidFolderError,
+)
+from app.media.service import ImageService
+from app.storage.directories import DirectoryManager
+from app.storage.local_storage import LocalImageStorage
+from app.vision.domain.dtos import DetectionDTO, DetectResponseDTO, InferenceMetadataDTO
+from app.vision.domain.errors import InvalidInputError
+from app.vision.service import InferenceService
+from fastapi import UploadFile
+from fastapi.testclient import TestClient
+from PIL import Image
 
 
 @pytest.fixture
@@ -52,7 +51,7 @@ def temp_base_dir(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def temp_directories(temp_base_dir: Path) -> Dict[str, Path]:
+def temp_directories(temp_base_dir: Path) -> dict[str, Path]:
     """Create temporary directories for uploaded, edited, and detected images."""
     dirs = {
         "uploaded": temp_base_dir / "uploaded",
@@ -65,7 +64,7 @@ def temp_directories(temp_base_dir: Path) -> Dict[str, Path]:
 
 
 @pytest.fixture
-def cleanup_temp_dirs(temp_directories: Dict[str, Path]):
+def cleanup_temp_dirs(temp_directories: dict[str, Path]):
     """Cleanup fixture to remove temporary directories after tests."""
     yield
     for dir_path in temp_directories.values():
@@ -74,7 +73,7 @@ def cleanup_temp_dirs(temp_directories: Dict[str, Path]):
 
 
 @pytest.fixture
-def mock_directory_manager(temp_directories: Dict[str, Path]) -> Mock:
+def mock_directory_manager(temp_directories: dict[str, Path]) -> Mock:
     """Create a mock DirectoryManager."""
     mock = Mock(spec=DirectoryManager)
     mock.get_directory.side_effect = lambda folder: temp_directories.get(folder)
@@ -82,9 +81,14 @@ def mock_directory_manager(temp_directories: Dict[str, Path]) -> Mock:
     return mock
 
 @pytest.fixture
-def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mock) -> Mock:
+def mock_image_service(temp_directories: dict[str, Path], mock_local_storage: Mock) -> Mock:
     """Create a mock ImageService."""
-    from app.media.domain.dtos import DeleteImageResultDTO, ImageDTO, OperationStatusDTO, SaveImageResultDTO
+    from app.media.domain.dtos import (
+        DeleteImageResultDTO,
+        ImageDTO,
+        OperationStatusDTO,
+        SaveImageResultDTO,
+    )
 
     mock = Mock(spec=ImageService)
     mock.local_storage = mock_local_storage
@@ -151,8 +155,8 @@ def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mo
             raise ImageNotFoundError(f"Image {filename} not found in {folder}")
         try:
             return build_image_dto(image_path, folder)
-        except (FileNotFoundError, OSError):
-            raise ImageNotFoundError(f"Image {filename} not found in {folder}")
+        except (FileNotFoundError, OSError) as exc:
+            raise ImageNotFoundError(f"Image {filename} not found in {folder}") from exc
 
     mock.get_image_by_filename.side_effect = get_image_by_filename_side_effect
 
@@ -230,7 +234,7 @@ def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mo
 
 
 @pytest.fixture
-def mock_local_storage(temp_directories: Dict[str, Path]) -> Mock:
+def mock_local_storage(temp_directories: dict[str, Path]) -> Mock:
     """Create a mock LocalImageStorage."""
     mock = Mock(spec=LocalImageStorage)
     
@@ -276,7 +280,7 @@ def mock_local_storage(temp_directories: Dict[str, Path]) -> Mock:
 
 
 @pytest.fixture
-def mock_image_edit_service(temp_directories: Dict[str, Path]) -> Mock:
+def mock_image_edit_service(temp_directories: dict[str, Path]) -> Mock:
     """Create a mock ImageEditService."""
     mock = Mock(spec=ImageEditService)
     
@@ -316,7 +320,7 @@ def mock_image_edit_service(temp_directories: Dict[str, Path]) -> Mock:
 
 
 @pytest.fixture
-def mock_inference_service(temp_directories: Dict[str, Path]) -> Mock:
+def mock_inference_service(temp_directories: dict[str, Path]) -> Mock:
     """Create a mock InferenceService."""
     mock = Mock(spec=InferenceService)
 
@@ -382,7 +386,7 @@ def sample_image_rgba() -> Image.Image:
 
 
 @pytest.fixture
-def sample_image_file(temp_directories: Dict[str, Path], sample_image_rgb: Image.Image) -> Path:
+def sample_image_file(temp_directories: dict[str, Path], sample_image_rgb: Image.Image) -> Path:
     """Create a sample image file on disk."""
     image_path = temp_directories["uploaded"] / "test_image.jpg"
     sample_image_rgb.save(image_path, format="JPEG")
@@ -453,7 +457,7 @@ def test_client(mock_inference_engine) -> TestClient:
 
 @pytest.fixture
 def test_client_with_overrides(
-    temp_directories: Dict[str, Path],
+    temp_directories: dict[str, Path],
     mock_local_storage: Mock,
     mock_image_edit_service: Mock,
     mock_image_service: Mock,
@@ -489,18 +493,18 @@ def test_client_with_overrides(
 
 
 @pytest.fixture
-def test_client_real_media(
-    temp_directories: Dict[str, Path],
+def test_client_full_stack(
+    temp_directories: dict[str, Path],
     mock_inference_engine: Mock,
-    mock_inference_service: Mock,
     tmp_path: Path,
 ):
-    """FastAPI test client wired to real ImageService, storage, and SQLite."""
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-
+    """FastAPI test client with real media/edit/inference services, SQLite, and storage."""
     from app.db.base import Base
     from app.models.image import ImageRecord  # noqa: F401
+    from app.vision.domain.dtos import DetectionDTO
+    from app.vision.inference.schemas import DetectionResult
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
 
     db_path = tmp_path / "test.db"
     engine = create_engine(
@@ -509,6 +513,15 @@ def test_client_real_media(
     )
     Base.metadata.create_all(bind=engine)
     session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    mock_inference_engine.is_ready = True
+    mock_inference_engine.predict.return_value = DetectionResult(
+        detections=[
+            DetectionDTO(label="person", confidence=0.95, box=[100.0, 100.0, 200.0, 300.0]),
+        ],
+        model_name="facebook/detr-resnet-50",
+        model_version=None,
+    )
 
     def override_get_settings() -> Settings:
         return Settings(
@@ -526,12 +539,8 @@ def test_client_real_media(
         finally:
             db.close()
 
-    def override_get_inference_service():
-        return mock_inference_service
-
     app.dependency_overrides[get_settings] = override_get_settings
     app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[get_inference_service] = override_get_inference_service
 
     with patch(
         "app.core.lifespan.InferenceEngine.from_settings",
@@ -541,6 +550,12 @@ def test_client_real_media(
             yield client
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def test_client_real_media(test_client_full_stack):
+    """Alias for backward compatibility with existing integration tests."""
+    return test_client_full_stack
 
 
 @pytest.fixture
@@ -585,7 +600,7 @@ def mock_detr_model():
 
 
 @pytest.fixture
-def format_extensions() -> Dict[str, str]:
+def format_extensions() -> dict[str, str]:
     """Get format extensions mapping."""
     return {
         "JPEG": ".jpg",

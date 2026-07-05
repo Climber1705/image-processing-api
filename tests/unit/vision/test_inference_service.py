@@ -3,15 +3,15 @@ Unit tests for InferenceService.
 """
 
 import base64
-import pytest
 from io import BytesIO
 from unittest.mock import Mock
-from PIL import Image
 
-from app.vision.domain.dtos import DetectResponseDTO, DetectionDTO
+import pytest
+from app.vision.domain.dtos import DetectionDTO, DetectResponseDTO
 from app.vision.domain.errors import InferenceError, ModelNotReadyError
 from app.vision.inference.schemas import DetectionResult
 from app.vision.service import InferenceService
+from PIL import Image
 
 
 @pytest.mark.unit
@@ -120,7 +120,7 @@ class TestInferenceService:
 
         assert result.image_path is not None
         assert result.annotated_image_base64 is None
-        inference_service.image_repository.upsert_record.assert_called_once()
+        inference_service.image_repository.upsert.assert_called_once()
 
     def test_detect_from_path_metadata_only(self, inference_service, temp_directories, sample_result):
         image_path = temp_directories["uploaded"] / "test_detect.jpg"
@@ -167,7 +167,7 @@ class TestInferenceService:
         assert len(result.detections) == 2
         assert result.metadata.model_name == "facebook/detr-resnet-50"
         inference_service.engine.predict.assert_called_once()
-        inference_service.image_repository.upsert_record.assert_called_once()
+        inference_service.image_repository.upsert.assert_called_once()
 
     def test_detect_from_path_single_inference(
         self, inference_service, temp_directories, sample_result, mock_local_storage

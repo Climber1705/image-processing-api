@@ -2,12 +2,12 @@
 Unit tests for vision image loading and validation.
 """
 
-import pytest
 from io import BytesIO
-from PIL import Image
 
+import pytest
 from app.vision.domain.errors import CorruptImageError, InvalidInputError
 from app.vision.image_loader import load_from_bytes, load_from_path
+from PIL import Image
 
 
 @pytest.mark.unit

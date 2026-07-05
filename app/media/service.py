@@ -1,5 +1,6 @@
 import uuid
 from pathlib import Path
+
 from fastapi import UploadFile
 
 from app.core.config import Settings
@@ -20,10 +21,10 @@ from app.media.domain.errors import (
     InvalidFolderError,
     InvalidMoveError,
 )
+from app.media.repository import ImageRepository
 from app.media.utils.filename import get_display_filename
 from app.media.utils.hash import compute_checksum
 from app.media.utils.mappers import record_to_dto
-from app.media.repository import ImageRepository
 from app.storage.base_storage import BaseImageStorage
 from app.validation.validator import get_format_extension, validate_image_format
 

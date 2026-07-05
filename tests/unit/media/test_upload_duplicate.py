@@ -2,15 +2,14 @@
 Unit tests for duplicate upload detection.
 """
 
-import pytest
 from io import BytesIO
 from unittest.mock import Mock
 
-from PIL import Image
-
+import pytest
 from app.media.domain.dtos import ImageDTO
 from app.media.service import ImageService
 from app.storage.local_storage import LocalImageStorage
+from PIL import Image
 
 
 @pytest.mark.unit

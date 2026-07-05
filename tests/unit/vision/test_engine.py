@@ -2,14 +2,14 @@
 Unit tests for InferenceEngine lifecycle.
 """
 
-import pytest
 from unittest.mock import Mock, patch
-from PIL import Image
-import torch
 
+import pytest
+import torch
 from app.core.config import settings
-from app.vision.inference.engine import EngineMetadata, InferenceEngine
 from app.dependencies.services import get_inference_service
+from app.vision.inference.engine import EngineMetadata, InferenceEngine
+from PIL import Image
 
 
 @pytest.mark.unit

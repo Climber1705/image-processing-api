@@ -2,11 +2,9 @@
 Unit tests for image validation utilities.
 """
 
-import pytest
 from io import BytesIO
-from fastapi import HTTPException, UploadFile
-from PIL import Image
 
+import pytest
 from app.validation.validator import (
     allowed_mime_types_for_formats,
     default_allowed_mime_types,
@@ -16,6 +14,8 @@ from app.validation.validator import (
     validate_image_type,
     validate_upload,
 )
+from fastapi import HTTPException, UploadFile
+from PIL import Image
 
 
 @pytest.mark.unit

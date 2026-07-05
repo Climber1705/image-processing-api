@@ -18,7 +18,7 @@ def to_detection_dtos(
             confidence=score.item(),
             box=box.tolist(),
         )
-        for score, label, box in zip(scores, labels, boxes)
+        for score, label, box in zip(scores, labels, boxes, strict=True)
     ]
 
 

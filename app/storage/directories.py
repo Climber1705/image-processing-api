@@ -1,6 +1,6 @@
 import os
-from pathlib import Path
 from collections.abc import Iterable
+from pathlib import Path
 
 from app.core.logging_config import get_logger
 from app.storage.errors import InvalidStorageFolderError, StorageOperationError

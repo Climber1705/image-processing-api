@@ -1,10 +1,8 @@
-import os
 import logging
-from typing import Optional
+import os
 from logging.handlers import RotatingFileHandler
 
 from app.core.config import settings
-
 
 LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -30,5 +28,5 @@ if not logger.hasHandlers():
     logger.addHandler(file_handler)
 
 
-def get_logger(name: Optional[str] = None) -> logging.Logger:
+def get_logger(name: str | None = None) -> logging.Logger:
     return logger if not name else logger.getChild(name)

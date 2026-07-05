@@ -2,11 +2,11 @@
 Unit tests for inference preprocessor.
 """
 
-import pytest
-from PIL import Image
 from unittest.mock import Mock
 
+import pytest
 from app.vision.inference.preprocessor import load_image, preprocess, resize_if_needed
+from PIL import Image
 
 
 @pytest.mark.unit

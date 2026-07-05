@@ -2,9 +2,9 @@
 Unit tests for vision API mappers.
 """
 
-import pytest
 from unittest.mock import Mock
 
+import pytest
 from app.vision.api.mappers import (
     from_engine_metadata,
     to_inference_detect_response,

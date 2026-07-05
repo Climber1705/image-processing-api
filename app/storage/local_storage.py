@@ -2,6 +2,7 @@ import os
 import shutil
 from pathlib import Path
 from typing import BinaryIO
+
 from PIL import Image, UnidentifiedImageError
 
 from app.core.logging_config import get_logger
@@ -45,15 +46,16 @@ class LocalImageStorage(BaseImageStorage):
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
+            pillow_format = "JPEG" if validated_format.upper() == "JPG" else validated_format.upper()
             with Image.open(file) as img:
-                img.save(file_path, format=validated_format.upper())
+                img.save(file_path, format=pillow_format)
             return str(file_path)
 
-        except UnidentifiedImageError:
+        except UnidentifiedImageError as exc:
             if file_path.exists():
                 os.remove(file_path)
             logger.error("Uploaded file is not a valid image: %s", file_path)
-            raise InvalidImageFileError("Uploaded file is not a valid image")
+            raise InvalidImageFileError("Uploaded file is not a valid image") from exc
 
         except Exception as e:
             if file_path.exists():

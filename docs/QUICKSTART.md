@@ -38,7 +38,7 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -e ".[test]"
 
 # Copy environment template
-cp .env-example .env
+cp .env.example .env
 
 # Start the API
 uvicorn app.main:app --reload

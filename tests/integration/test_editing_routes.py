@@ -3,8 +3,8 @@ Integration tests for image editing API routes.
 """
 
 import pytest
-from PIL import Image
 from fastapi import status
+from PIL import Image
 
 
 @pytest.mark.integration

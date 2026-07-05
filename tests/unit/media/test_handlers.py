@@ -3,10 +3,9 @@
 import json
 
 import pytest
-from starlette.requests import Request
-
 from app.media.api.handlers import image_not_found_handler, invalid_folder_handler
 from app.media.domain.errors import ImageNotFoundError, InvalidFolderError
+from starlette.requests import Request
 
 
 def _make_request() -> Request:

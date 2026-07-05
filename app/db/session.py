@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import get_settings
 from app.db.base import Base
-from app.models.image import ImageRecord
 
 engine = create_engine(
     get_settings().DATABASE_URL,

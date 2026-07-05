@@ -1,4 +1,3 @@
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -29,7 +28,7 @@ class ImageListItem(BaseModel):
     height: int
     size_bytes: int
     path: str
-    url: Optional[str] = None
+    url: str | None = None
     folder: str
 
 
@@ -41,4 +40,4 @@ class ImageDetailResponse(BaseModel):
     height: int
     size_bytes: int
     path: str
-    url: Optional[str] = None
+    url: str | None = None

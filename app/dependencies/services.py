@@ -1,5 +1,3 @@
-from fastapi import Depends, Request
-
 from app.core.config import Settings, get_settings
 from app.dependencies.repositories import get_image_repository
 from app.dependencies.storage import get_local_image_storage
@@ -8,6 +6,7 @@ from app.media.repository import ImageRepository
 from app.media.service import ImageService
 from app.storage.base_storage import BaseImageStorage
 from app.vision.service import InferenceService
+from fastapi import Depends, Request
 
 
 def get_image_service(

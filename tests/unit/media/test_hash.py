@@ -2,10 +2,9 @@
 Unit tests for image content hashing.
 """
 
-import pytest
 from io import BytesIO
-from pathlib import Path
 
+import pytest
 from app.media.utils.hash import compute_checksum, compute_file_checksum
 
 

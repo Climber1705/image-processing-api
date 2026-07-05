@@ -65,7 +65,7 @@ docker-compose -f docker-compose.yml down -v
 1. **Environment Variables**: Never commit `.env` files to version control
 2. **Logging**: Use `LOG_LEVEL=INFO` or higher in production
 4. **Ports**: Only expose necessary ports (8000 for API)
-5. **Authentication**: Implement authentication before production use (planned feature)
+5. **Authentication**: Not implemented — add API keys or OAuth before exposing publicly
 
 ### Performance
 

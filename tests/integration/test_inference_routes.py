@@ -2,12 +2,10 @@
 Integration tests for /v1/inference API routes.
 """
 
-import pytest
 from io import BytesIO
-from PIL import Image
-from fastapi import status
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
+import pytest
 from app.dependencies.repositories import get_image_repository
 from app.dependencies.services import get_image_service, get_inference_service
 from app.dependencies.storage import get_local_image_storage
@@ -15,8 +13,9 @@ from app.main import app
 from app.vision.domain.dtos import DetectionDTO
 from app.vision.inference.schemas import DetectionResult
 from app.vision.service import InferenceService
+from fastapi import status
 from fastapi.testclient import TestClient
-from unittest.mock import patch
+from PIL import Image
 
 
 @pytest.fixture

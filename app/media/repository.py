@@ -1,7 +1,7 @@
 import uuid
 from pathlib import Path
 
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 

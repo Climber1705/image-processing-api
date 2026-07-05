@@ -4,14 +4,13 @@ Unit tests for LocalImageStorage service.
 
 import re
 import uuid
-import pytest
-from pathlib import Path
 from io import BytesIO
-from PIL import Image
+from pathlib import Path
 
+import pytest
 from app.storage.errors import InvalidImageFileError
 from app.storage.local_storage import LocalImageStorage
-
+from PIL import Image
 
 UUID_FILENAME_PATTERN = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jpg$"

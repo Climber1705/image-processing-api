@@ -2,10 +2,12 @@
 Integration tests for image management API routes.
 """
 
-import pytest
 from io import BytesIO
-from PIL import Image
+
+import pytest
 from fastapi import status
+from PIL import Image
+
 
 @pytest.mark.integration
 class TestImageRoutes:

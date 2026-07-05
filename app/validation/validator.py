@@ -65,9 +65,7 @@ def validate_image_size(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File too large. Max size is {} MB.".format(
-                max_size_bytes // (1024 * 1024)
-            ),
+            detail=f"File too large. Max size is {max_size_bytes // (1024 * 1024)} MB.",
         )
 
 

@@ -2,12 +2,10 @@
 Unit tests for ImageService.
 """
 
-import pytest
 from pathlib import Path
 from unittest.mock import Mock
 
-from PIL import Image
-
+import pytest
 from app.media.domain.dtos import ImageDTO
 from app.media.domain.enums import ImageFolder
 from app.media.domain.errors import (
@@ -16,9 +14,9 @@ from app.media.domain.errors import (
     InvalidFolderError,
     InvalidMoveError,
 )
-from app.media.utils.mappers import record_to_dto
 from app.media.service import ImageService
 from app.storage.local_storage import LocalImageStorage
+from PIL import Image
 
 
 @pytest.mark.unit

@@ -1,6 +1,8 @@
-from PIL import Image
+from collections.abc import Callable
 from io import BytesIO
-from typing import Any, Callable
+from typing import Any
+
+from PIL import Image
 
 from app.core.logging_config import get_logger
 from app.editing import operations
@@ -54,7 +56,7 @@ class ImageEditService:
                     storage_id=storage_id,
                     format=save_format,
                 )
-                image = self.image_repository.upsert_record(
+                image = self.image_repository.upsert(
                     path=output_path,
                     folder=ImageFolder.EDITED,
                     display_filename=display_filename,

@@ -3,7 +3,6 @@ Unit tests for DirectoryManager utility.
 """
 
 import pytest
-
 from app.storage.directories import DirectoryManager
 from app.storage.errors import InvalidStorageFolderError
 
@@ -49,7 +48,7 @@ class TestDirectoryManager:
             "test2": temp_base_dir / "new_test2",
         }
 
-        manager = DirectoryManager(directories=new_dirs)
+        DirectoryManager(directories=new_dirs)
 
         assert new_dirs["test1"].exists()
         assert new_dirs["test2"].exists()

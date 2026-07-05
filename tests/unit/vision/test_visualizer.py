@@ -3,10 +3,9 @@ Unit tests for inference visualizer.
 """
 
 import pytest
-from PIL import Image
-
 from app.vision.domain.dtos import DetectionDTO
 from app.vision.inference.visualizer import draw_bounding_boxes
+from PIL import Image
 
 
 @pytest.mark.unit

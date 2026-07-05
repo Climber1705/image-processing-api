@@ -56,7 +56,7 @@ pip install -e ".[test]"
 Copy the environment variables template and modify it to match your local setup:
 
 ```bash
-cp .env-example .env
+cp .env.example .env
 # Edit .env with the appropriate values
 ```
 

@@ -33,7 +33,7 @@ Development guidelines and testing instructions for the Image Processing API.
 
 4. **Configure environment:**
    ```bash
-   cp .env-example .env
+   cp .env.example .env
    # Edit .env with LOG_LEVEL=DEBUG for development
    ```
 

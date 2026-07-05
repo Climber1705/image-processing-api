@@ -71,7 +71,31 @@ test = [
     "httpx==0.26.0",
     "pytest-mock==3.12.0",
     "faker==22.0.0",
+    "ruff>=0.9.0",
+    "mypy>=1.14.0",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["app", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["B008", "E501"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["app"]
+ignore_missing_imports = true
+warn_return_any = false
+warn_unused_ignores = true
+check_untyped_defs = true
+disable_error_code = ["import-untyped", "arg-type", "attr-defined"]
 
 [tool.setuptools.packages.find]
 where = ["."]
