@@ -1,19 +1,14 @@
-from typing import Dict, List, Optional, Annotated, Any, Union
-from fastapi import HTTPException, Depends
-from pathlib import Path
 import shutil
+from typing import Any
+from pathlib import Path
+from fastapi import HTTPException
 
-from app.core.dependencies import get_directories
-from app.utils.file_operations.directory_utils import DirectoryManager, get_directory_manager
-from app.utils.file_operations.file_utils import FilePathResolver, get_file_path_resolver
-from app.services.image.metadata_handler import ImageMetadataExtractor, get_image_metadata_extractor
+from app.utils.file_operations.directory_utils import DirectoryManager
+from app.utils.file_operations.file_utils import FilePathResolver
+from app.services.image.metadata_handler import ImageMetadataExtractor
 from app.core.logging_config import get_logger
 from app.schemas.image.image_responses import ImageListItem
 
-DirectoryManagerDep = Annotated[DirectoryManager, Depends(get_directory_manager)]
-ImageMetadataExtractorDep = Annotated[ImageMetadataExtractor, Depends(get_image_metadata_extractor)]
-FilePathResolverDep = Annotated[FilePathResolver, Depends(get_file_path_resolver)]
-DirectoriesDep = Annotated[Dict[str, Path], Depends(get_directories)]
 
 logger = get_logger("crud_operations")
 
@@ -21,17 +16,17 @@ logger = get_logger("crud_operations")
 class ImageCRUDService:
     def __init__(
         self,
-        directory_manager: DirectoryManagerDep,
-        metadata_extractor: ImageMetadataExtractorDep,
-        file_resolver: FilePathResolverDep,
-        directories: DirectoriesDep,
+        directory_manager: DirectoryManager,
+        metadata_extractor: ImageMetadataExtractor,
+        file_resolver: FilePathResolver,
+        directories: dict[str, Path],
     ):
         self.directory_manager = directory_manager
         self.metadata_extractor = metadata_extractor
         self.file_resolver = file_resolver
         self.directories = directories
 
-    def _get_folder_map(self) -> Dict[str, List[Path]]:
+    def _get_folder_map(self) -> dict[str, list[Path]]:
         return {
             "uploaded": [self.directories["uploaded"]],
             "edited": [self.directories["edited"]],
@@ -39,7 +34,7 @@ class ImageCRUDService:
             "all": list(self.directories.values()),
         }
 
-    def delete_image(self, image_id: str, folder: str) -> Dict[str, Union[str, Dict[str, Any]]]:
+    def delete_image(self, image_id: str, folder: str) -> dict[str, str | dict[str, Any]]:
         directory = self.directory_manager.get_directory(folder)
         image_path = directory / image_id
 
@@ -66,7 +61,7 @@ class ImageCRUDService:
             logger.error(f"Error deleting image: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to delete image: {e}")
 
-    def delete_all_images(self, folder: str) -> Dict[str, str]:
+    def delete_all_images(self, folder: str) -> dict[str, str]:
         folder_map = self._get_folder_map()
 
         if folder not in folder_map:
@@ -105,7 +100,7 @@ class ImageCRUDService:
             "message": f"Deleted {deleted_count} images from {folder}",
         }
 
-    def move_image(self, image_id: str, source_folder: str, target_folder: str) -> Dict[str, Any]:
+    def move_image(self, image_id: str, source_folder: str, target_folder: str) -> dict[str, Any]:
         if source_folder == target_folder:
             logger.warning("Source and target folders cannot be the same")
             raise HTTPException(status_code=400, detail="Source and target folders cannot be the same")
@@ -146,7 +141,7 @@ class ImageCRUDService:
 
         return image_path
 
-    def get_image_by_id(self, image_id: str, folder: str) -> Dict[str, Any]:
+    def get_image_by_id(self, image_id: str, folder: str) -> dict[str, Any]:
         image_path = self.get_image_path(image_id, folder)
         return self.metadata_extractor.get_metadata(image_path)
 
@@ -155,8 +150,8 @@ class ImageCRUDService:
         folder: str,
         limit: int = 100,
         offset: int = 0,
-        subdirectory: Optional[str] = None,
-    ) -> List[ImageListItem]:
+        subdirectory: str | None = None,
+    ) -> list[ImageListItem]:
         folder_map = self._get_folder_map()
 
         if folder not in folder_map:
@@ -195,15 +190,4 @@ class ImageCRUDService:
         return results
 
 
-def get_image_crud_service(
-    directory_manager: DirectoryManagerDep,
-    metadata_extractor: ImageMetadataExtractorDep,
-    file_resolver: FilePathResolverDep,
-    directories: DirectoriesDep,
-) -> ImageCRUDService:
-    return ImageCRUDService(
-        directory_manager=directory_manager,
-        metadata_extractor=metadata_extractor,
-        file_resolver=file_resolver,
-        directories=directories,
-    )
+
