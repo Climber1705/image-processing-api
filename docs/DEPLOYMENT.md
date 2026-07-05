@@ -34,12 +34,10 @@ For production, configure your environment variables:
 
 **Production `.env` file:**
 ```env
-DEBUG=False
 LOG_LEVEL=INFO
 ```
 
 **Key Settings:**
-- `DEBUG=False`: Disables debug mode and detailed error messages
 - `LOG_LEVEL=INFO`: Production-appropriate logging level
 
 #### View Production Logs
@@ -65,8 +63,7 @@ docker-compose -f docker-compose.yml down -v
 ### Security
 
 1. **Environment Variables**: Never commit `.env` files to version control
-2. **Debug Mode**: Always set `DEBUG=False` in production
-3. **Logging**: Use `LOG_LEVEL=INFO` or higher in production
+2. **Logging**: Use `LOG_LEVEL=INFO` or higher in production
 4. **Ports**: Only expose necessary ports (8000 for API)
 5. **Authentication**: Implement authentication before production use (planned feature)
 
@@ -175,7 +172,6 @@ The production Docker setup uses named volumes for data persistence:
 
 Before deploying to production:
 
-- [ ] Set `DEBUG=False` in production environment
 - [ ] Configure `LOG_LEVEL=INFO` or appropriate level
 - [ ] Verify health check endpoint is accessible
 - [ ] Set up monitoring and alerting

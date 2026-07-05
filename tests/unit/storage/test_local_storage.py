@@ -6,10 +6,10 @@ import re
 import uuid
 import pytest
 from pathlib import Path
-from fastapi import HTTPException
 from io import BytesIO
 from PIL import Image
 
+from app.storage.errors import InvalidImageFileError
 from app.storage.local_storage import LocalImageStorage
 
 
@@ -66,15 +66,12 @@ class TestLocalImageStorage:
         """Test saving an invalid image file."""
         invalid_file = BytesIO(b"not an image")
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(InvalidImageFileError, match="not a valid image"):
             storage_service.save(
                 invalid_file,
                 folder="uploaded",
                 storage_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
             )
-
-        assert exc_info.value.status_code == 400
-        assert "not a valid image" in exc_info.value.detail
 
     def test_save_different_folders(self, storage_service, temp_directories, valid_upload_file):
         """Test saving images to different folders."""

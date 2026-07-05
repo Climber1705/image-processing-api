@@ -1,8 +1,7 @@
 from pathlib import Path
 
-from fastapi import HTTPException, status
-
 from app.core.logging_config import get_logger
+from app.storage.errors import InvalidStorageFolderError, StorageOperationError
 
 logger = get_logger("directories")
 
@@ -18,18 +17,14 @@ class DirectoryManager:
                 directory.mkdir(parents=True, exist_ok=True)
             except Exception as e:
                 logger.error("Error creating directory %s: %s", directory, e)
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Failed to create directory: {directory}. Error: {e}",
-                )
+                raise StorageOperationError(
+                    f"Failed to create directory: {directory}. Error: {e}",
+                ) from e
 
     def validate_folder(self, folder: str) -> bool:
         return folder in self.directories
 
     def get_directory(self, folder: str) -> Path:
         if not self.validate_folder(folder):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid folder: {folder}",
-            )
+            raise InvalidStorageFolderError(f"Invalid folder: {folder}")
         return self.directories[folder]

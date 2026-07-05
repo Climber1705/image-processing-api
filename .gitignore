@@ -25,4 +25,4 @@ app/static/edited/
 app/static/detected/
 
 # SQLite database files
-app/images.db
+app/data/

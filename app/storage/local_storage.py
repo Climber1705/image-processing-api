@@ -2,12 +2,12 @@ import os
 import shutil
 from typing import BinaryIO
 from pathlib import Path
-from fastapi import HTTPException, status
 from PIL import Image, UnidentifiedImageError
 
 from app.core.logging_config import get_logger
 from app.storage.base_storage import BaseImageStorage
 from app.storage.directories import DirectoryManager
+from app.storage.errors import InvalidImageFileError, StorageOperationError
 from app.validation.validator import get_format_extension, validate_image_format
 
 logger = get_logger("local_storage")
@@ -54,13 +54,13 @@ class LocalImageStorage(BaseImageStorage):
             if file_path.exists():
                 os.remove(file_path)
             logger.error("Uploaded file is not a valid image: %s", file_path)
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is not a valid image")
+            raise InvalidImageFileError("Uploaded file is not a valid image")
 
         except Exception as e:
             if file_path.exists():
                 os.remove(file_path)
             logger.error("Failed to save image %s: %s", file_path, e)
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save image")
+            raise StorageOperationError("Failed to save image") from e
 
     def read(self, path: str | Path) -> BinaryIO:
         file_path = Path(path)

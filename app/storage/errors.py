@@ -1,0 +1,13 @@
+from app.domain.errors import DomainError
+
+
+class StorageError(DomainError): ...
+
+
+class InvalidStorageFolderError(StorageError): ...
+
+
+class InvalidImageFileError(StorageError): ...
+
+
+class StorageOperationError(StorageError): ...

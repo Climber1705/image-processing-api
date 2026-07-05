@@ -3,8 +3,7 @@ from pathlib import Path
 
 from PIL import Image, UnidentifiedImageError
 
-from app.media.domain.errors import ImageNotFoundError
-from app.vision.domain.errors import CorruptImageError
+from app.vision.domain.errors import CorruptImageError, InvalidInputError
 
 
 def _open_rgb(source: Path | BytesIO, label: str) -> Image.Image:
@@ -27,7 +26,7 @@ def _open_rgb(source: Path | BytesIO, label: str) -> Image.Image:
 
 def load_from_path(path: Path) -> Image.Image:
     if not path.exists():
-        raise ImageNotFoundError(f"Image {path.name} not found")
+        raise InvalidInputError(f"Image {path.name} not found")
     if path.stat().st_size == 0:
         raise CorruptImageError(f"Image file is empty: {path.name}")
     return _open_rgb(path, path.name)

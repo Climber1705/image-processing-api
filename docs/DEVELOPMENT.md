@@ -34,7 +34,7 @@ Development guidelines and testing instructions for the Image Processing API.
 4. **Configure environment:**
    ```bash
    cp .env-example .env
-   # Edit .env with DEBUG=True and LOG_LEVEL=DEBUG for development
+   # Edit .env with LOG_LEVEL=DEBUG for development
    ```
 
 5. **Run the API in development mode:**
@@ -93,7 +93,7 @@ The HTML coverage report will be generated in `htmlcov/index.html`.
 #### Run a Specific Test File
 
 ```bash
-pytest tests/unit/services/test_image_editor.py
+pytest tests/unit/editing/test_edit_service.py
 ```
 
 #### Run Tests with Verbose Output
@@ -206,7 +206,7 @@ Stay tuned for these upcoming features:
 
 ### Enable Debug Mode
 
-Set `DEBUG=True` in your `.env` file for detailed error messages.
+Set `LOG_LEVEL=DEBUG` in your `.env` file for detailed log output.
 
 ### View Logs
 

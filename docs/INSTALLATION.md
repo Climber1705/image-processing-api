@@ -64,15 +64,6 @@ cp .env-example .env
 
 The following environment variables can be configured in your `.env` file:
 
-##### `DEBUG` (boolean, default: `False`)
-
-- Set to `True` for development environment
-- Enables debug mode with detailed error messages
-- Set to `False` for production environment
-- **Use Cases**:
-  - `True`: Development, testing, debugging
-  - `False`: Production deployments
-
 ##### `LOG_LEVEL` (string, default: `INFO`)
 
 - Controls the verbosity of logging output
@@ -89,13 +80,11 @@ The following environment variables can be configured in your `.env` file:
 
 **Example `.env` file for development:**
 ```env
-DEBUG=True
 LOG_LEVEL=DEBUG
 ```
 
 **Example `.env` file for production:**
 ```env
-DEBUG=False
 LOG_LEVEL=INFO
 ```
 
@@ -127,7 +116,6 @@ docker-compose -f docker-compose.dev.yml up --build
 **Development Features:**
 - Hot reload enabled (code changes are automatically reflected)
 - Volume mounts for live code updates
-- DEBUG mode enabled
 - Detailed logging (LOG_LEVEL=DEBUG)
 - Accessible at [http://localhost:8000](http://localhost:8000)
 

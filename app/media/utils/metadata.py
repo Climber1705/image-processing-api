@@ -2,9 +2,10 @@ import os
 from pathlib import Path
 
 from PIL import Image
-from fastapi import HTTPException
 
 from app.media.domain.dtos import FileMetadataDTO
+from app.media.domain.errors import ImageNotFoundError, ImageOperationError
+
 
 def get_image_metadata(image_path: Path) -> FileMetadataDTO:
     try:
@@ -20,9 +21,6 @@ def get_image_metadata(image_path: Path) -> FileMetadataDTO:
                 url=None,
             )
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Image not found")
+        raise ImageNotFoundError("Image not found")
     except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get image info: {exc}",
-        )
+        raise ImageOperationError(f"Failed to get image info: {exc}") from exc

@@ -37,8 +37,7 @@ The Swagger UI provides:
 | POST | `/images` | Upload a new image | 10/min |
 | GET | `/images` | List images with pagination | 60/min |
 | DELETE | `/images` | Delete all images in folder | 2/hour |
-| GET | `/images/{image_name}` | Get image metadata | 30/min |
-| GET | `/images/{image_name}/dimensions` | Get image dimensions | 20/min |
+| GET | `/images/{image_name}` | Get image metadata (includes width and height) | 30/min |
 | PATCH | `/images/{image_name}` | Move image between folders | 20/min |
 | DELETE | `/images/{image_name}` | Delete an image | 10/min |
 
@@ -111,11 +110,7 @@ curl http://localhost:8000/images
 curl http://localhost:8000/images/my_photo.jpg
 ```
 
-### Get Image Dimensions
-
-```bash
-curl http://localhost:8000/images/my_photo.jpg/dimensions
-```
+The response includes `width` and `height` alongside format and path metadata.
 
 ### Resize an Image
 

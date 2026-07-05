@@ -12,9 +12,10 @@ tests/
 ├── inference/               # Real-model smoke tests (@pytest.mark.inference)
 ├── unit/
 │   ├── api/                 # Health route tests
-│   ├── media/               # Media domain tests
-│   ├── services/            # Service layer tests
-│   ├── utils/               # Utility tests
+│   ├── editing/             # Image editing service tests
+│   ├── media/               # Media domain and service tests
+│   ├── storage/             # Filesystem storage tests
+│   ├── utils/               # Validation utility tests
 │   └── vision/              # Vision/inference tests
 └── integration/             # API endpoint integration tests
 ```

@@ -4,8 +4,8 @@ Unit tests for image metadata helpers.
 
 import pytest
 from PIL import Image
-from fastapi import HTTPException
 
+from app.media.domain.errors import ImageNotFoundError, ImageOperationError
 from app.media.utils.metadata import get_image_metadata
 
 
@@ -46,17 +46,13 @@ class TestImageMetadata:
         """Test metadata extraction with non-existent file."""
         image_path = temp_directories["uploaded"] / "nonexistent.jpg"
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(ImageNotFoundError, match="Image not found"):
             get_image_metadata(image_path)
-
-        assert exc_info.value.status_code == 404
 
     def test_get_metadata_invalid_image(self, temp_directories):
         """Test metadata extraction with invalid image file."""
         image_path = temp_directories["uploaded"] / "invalid.jpg"
         image_path.write_text("not an image")
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(ImageOperationError, match="Failed to get image info"):
             get_image_metadata(image_path)
-
-        assert exc_info.value.status_code == 500

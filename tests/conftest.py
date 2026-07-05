@@ -18,16 +18,22 @@ from typing import Dict
 from unittest.mock import Mock, patch
 from io import BytesIO
 from PIL import Image
-from fastapi import UploadFile, HTTPException, status
+from fastapi import UploadFile, status
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.storage.directories import DirectoryManager
 from app.storage.local_storage import LocalImageStorage
 from app.media.service import ImageService
+from app.media.domain.errors import (
+    ImageConflictError,
+    ImageNotFoundError,
+    InvalidFolderError,
+)
 from app.editing.domain.dtos import EditResultDTO
 from app.editing.service import ImageEditService
 from app.vision.domain.dtos import DetectResponseDTO, DetectionDTO, InferenceMetadataDTO
+from app.vision.domain.errors import InvalidInputError
 from app.vision.service import InferenceService
 from app.dependencies.storage import get_local_image_storage
 from app.dependencies.services import (
@@ -35,6 +41,8 @@ from app.dependencies.services import (
     get_image_service,
     get_inference_service,
 )
+from app.core.config import Settings, get_settings
+from app.db.session import get_db
 
 
 @pytest.fixture
@@ -113,9 +121,8 @@ def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mo
             "all": list(temp_directories.values()),
         }
         if folder not in folder_map:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid folder: {folder}. Valid options: {list(folder_map.keys())}",
+            raise InvalidFolderError(
+                f"Invalid folder: {folder}. Valid options: {list(folder_map.keys())}",
             )
 
         results: list[ImageDTO] = []
@@ -141,18 +148,18 @@ def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mo
     def get_image_by_filename_side_effect(filename: str, folder: str = "uploaded") -> ImageDTO:
         image_path = temp_directories.get(folder, temp_directories["uploaded"]) / filename
         if not image_path.exists():
-            raise HTTPException(status_code=404, detail=f"Image {filename} not found in {folder}")
+            raise ImageNotFoundError(f"Image {filename} not found in {folder}")
         try:
             return build_image_dto(image_path, folder)
         except (FileNotFoundError, OSError):
-            raise HTTPException(status_code=404, detail=f"Image {filename} not found in {folder}")
+            raise ImageNotFoundError(f"Image {filename} not found in {folder}")
 
     mock.get_image_by_filename.side_effect = get_image_by_filename_side_effect
 
     def delete_image_side_effect(filename: str, folder: str = "uploaded") -> DeleteImageResultDTO:
         image_path = temp_directories.get(folder, temp_directories["uploaded"]) / filename
         if not image_path.exists():
-            raise HTTPException(status_code=404, detail=f"Image {filename} not found in {folder} folder")
+            raise ImageNotFoundError(f"Image {filename} not found in {folder} folder")
         deleted_image = build_image_dto(image_path, folder)
         image_path.unlink()
         return DeleteImageResultDTO(
@@ -171,7 +178,7 @@ def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mo
             "all": list(temp_directories.values()),
         }
         if folder not in folder_map:
-            raise HTTPException(status_code=400, detail=f"Invalid folder: {folder}")
+            raise InvalidFolderError(f"Invalid folder: {folder}")
 
         deleted_count = 0
         valid_extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp"}
@@ -194,9 +201,9 @@ def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mo
         target_path = temp_directories.get(target_folder, temp_directories["edited"]) / filename
 
         if not source_path.exists():
-            raise HTTPException(status_code=404, detail=f"Image {filename} not found in {source_folder}")
+            raise ImageNotFoundError(f"Image {filename} not found in {source_folder}")
         if target_path.exists():
-            raise HTTPException(status_code=409, detail=f"Image {filename} already exists in {target_folder}")
+            raise ImageConflictError(f"Image {filename} already exists in {target_folder}")
 
         shutil.move(str(source_path), str(target_path))
         return build_image_dto(target_path, target_folder)
@@ -277,7 +284,7 @@ def mock_image_edit_service(temp_directories: Dict[str, Path]) -> Mock:
         """Check if source image exists before processing."""
         source_path = temp_directories["uploaded"] / image_name
         if not source_path.exists():
-            raise HTTPException(status_code=404, detail=f"Image {image_name} not found in uploaded")
+            raise ImageNotFoundError(f"Image {image_name} not found in uploaded")
         output_name = f"{Path(image_name).stem}_resized.jpg"
         output_path = temp_directories["edited"] / output_name
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -337,7 +344,7 @@ def mock_inference_service(temp_directories: Dict[str, Path]) -> Mock:
     ):
         folder = "uploaded"
         if not _resolve_image_path(source_filename, folder).exists():
-            raise HTTPException(status_code=404, detail=f"Image {source_filename} not found in {folder}")
+            raise InvalidInputError(f"Image {source_filename} not found in {folder}")
         if visualize and persist:
             return detection_result
         if visualize:
@@ -469,6 +476,61 @@ def test_client_with_overrides(
     app.dependency_overrides[get_local_image_storage] = override_get_local_image_storage
     app.dependency_overrides[get_image_edit_service] = override_get_image_edit_service
     app.dependency_overrides[get_image_service] = override_get_image_service
+    app.dependency_overrides[get_inference_service] = override_get_inference_service
+
+    with patch(
+        "app.core.lifespan.InferenceEngine.from_settings",
+        return_value=mock_inference_engine,
+    ):
+        with TestClient(app) as client:
+            yield client
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def test_client_real_media(
+    temp_directories: Dict[str, Path],
+    mock_inference_engine: Mock,
+    mock_inference_service: Mock,
+    tmp_path: Path,
+):
+    """FastAPI test client wired to real ImageService, storage, and SQLite."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.db.base import Base
+    from app.models.image import ImageRecord  # noqa: F401
+
+    db_path = tmp_path / "test.db"
+    engine = create_engine(
+        f"sqlite:///{db_path}",
+        connect_args={"check_same_thread": False},
+    )
+    Base.metadata.create_all(bind=engine)
+    session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    def override_get_settings() -> Settings:
+        return Settings(
+            UPLOADED_FOLDER=temp_directories["uploaded"],
+            EDITED_FOLDER=temp_directories["edited"],
+            DETECTED_FOLDER=temp_directories["detected"],
+            DATABASE_URL=f"sqlite:///{db_path}",
+            WARMUP_ON_STARTUP=False,
+        )
+
+    def override_get_db():
+        db = session_factory()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    def override_get_inference_service():
+        return mock_inference_service
+
+    app.dependency_overrides[get_settings] = override_get_settings
+    app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_inference_service] = override_get_inference_service
 
     with patch(

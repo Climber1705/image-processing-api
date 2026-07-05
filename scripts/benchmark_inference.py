@@ -18,7 +18,7 @@ from app.core.config import get_settings
 from app.vision.inference.engine import InferenceEngine
 
 
-def _percentile(sorted_values: list[float], pct: float) -> float:
+def get_percentile(sorted_values: list[float], pct: float) -> float:
     if not sorted_values:
         return 0.0
     index = max(0, min(len(sorted_values) - 1, int(len(sorted_values) * pct) - 1))
@@ -28,7 +28,6 @@ def _percentile(sorted_values: list[float], pct: float) -> float:
 def benchmark_size(
     engine: InferenceEngine,
     image_size: tuple[int, int],
-    *,
     confidence_threshold: float,
     runs: int,
     warmup_runs: int,
@@ -50,7 +49,7 @@ def benchmark_size(
         "height": image_size[1],
         "runs": runs,
         "p50_ms": statistics.median(durations_ms),
-        "p95_ms": _percentile(durations_ms, 0.95),
+        "p95_ms": get_percentile(durations_ms, 0.95),
         "min_ms": durations_ms[0],
         "max_ms": durations_ms[-1],
     }

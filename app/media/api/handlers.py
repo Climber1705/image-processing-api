@@ -4,7 +4,6 @@ from starlette import status
 
 from app.core.logging_config import get_logger
 from app.media.domain.errors import (
-    DuplicateImageError,
     ImageConflictError,
     ImageCreationError,
     ImageNotFoundError,
@@ -33,10 +32,6 @@ async def get_media_error_response(
 
 async def image_not_found_handler(request: Request, exc: ImageNotFoundError) -> JSONResponse:
     return await get_media_error_response(request, exc, status.HTTP_404_NOT_FOUND)
-
-
-async def duplicate_image_handler(request: Request, exc: DuplicateImageError) -> JSONResponse:
-    return await get_media_error_response(request, exc, status.HTTP_409_CONFLICT)
 
 
 async def invalid_folder_handler(request: Request, exc: InvalidFolderError) -> JSONResponse:
@@ -69,7 +64,6 @@ async def media_domain_error_handler(request: Request, exc: MediaDomainError) ->
 
 def register_media_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(ImageNotFoundError, image_not_found_handler)
-    app.add_exception_handler(DuplicateImageError, duplicate_image_handler)
     app.add_exception_handler(InvalidFolderError, invalid_folder_handler)
     app.add_exception_handler(InvalidMoveError, invalid_move_handler)
     app.add_exception_handler(ImageConflictError, image_conflict_handler)

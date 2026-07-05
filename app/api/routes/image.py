@@ -1,7 +1,7 @@
 import asyncio
 from typing import Annotated
 
-from fastapi import APIRouter, Request, UploadFile, HTTPException, status, Depends, Query
+from fastapi import APIRouter, Request, UploadFile, status, Depends, Query
 
 from app.core.rate_limiting import limiter
 from app.core.logging_config import get_logger
@@ -26,7 +26,6 @@ from app.media.utils.mappers import (
     to_upload_response,
 )
 from app.media.service import ImageService
-from app.media.domain.errors import MediaDomainError
 from app.validation.validator import validate_upload
 
 logger = get_logger("image_routes")

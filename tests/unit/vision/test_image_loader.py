@@ -6,7 +6,7 @@ import pytest
 from io import BytesIO
 from PIL import Image
 
-from app.vision.domain.errors import CorruptImageError
+from app.vision.domain.errors import CorruptImageError, InvalidInputError
 from app.vision.image_loader import load_from_bytes, load_from_path
 
 
@@ -28,6 +28,12 @@ class TestImageLoader:
 
         assert loaded.mode == "RGB"
         assert loaded.size == (100, 100)
+
+    def test_load_from_path_rejects_missing_file(self, temp_directories):
+        image_path = temp_directories["uploaded"] / "missing.jpg"
+
+        with pytest.raises(InvalidInputError, match="not found"):
+            load_from_path(image_path)
 
     def test_load_from_path_rejects_empty_file(self, temp_directories):
         image_path = temp_directories["uploaded"] / "empty.jpg"
