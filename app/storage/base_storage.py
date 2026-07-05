@@ -1,6 +1,6 @@
-from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import BinaryIO
+from abc import ABC, abstractmethod
 
 
 class BaseImageStorage(ABC):
