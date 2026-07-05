@@ -65,7 +65,7 @@ class ObjectDetectionService:
         return UploadFile(filename=filename, file=temp_file)
 
     def get_bounding_boxes(self, image_path: str) -> str:
-        image = Image.open(image_path)
+        image = Image.open(image_path).convert("RGB")
         image_copy = image.copy()
         draw = ImageDraw.Draw(image_copy)
         font = self._get_font(16)
@@ -96,19 +96,20 @@ class ObjectDetectionService:
         original_filename = os.path.basename(image_path)
         name, ext = os.path.splitext(original_filename)
         new_filename = f"{name}_bounding_boxes{ext}"
+        save_format = ext.lstrip(".").upper() or "PNG"
 
         output_path = self.local_storage.save(
             file=self._pillow_to_uploadfile(image_copy, filename=new_filename),
             folder="detected",
             filename=new_filename,
-            format=image.format,
+            format=save_format,
         )
 
         logger.info(f"Bounding boxes saved to: {output_path}")
         return output_path
 
     def get_detected_objects(self, image_path: str) -> List[Dict[str, Union[str, float, List[float]]]]:
-        image = Image.open(image_path)
+        image = Image.open(image_path).convert("RGB")
 
         inputs = self.processor(images=image, return_tensors="pt")
         outputs = self.model(**inputs)
