@@ -48,7 +48,7 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 Install the required Python packages:
 
 ```bash
-pip install -r requirements.txt
+pip install -e ".[test]"
 ```
 
 ### 3. Configure the Environment
