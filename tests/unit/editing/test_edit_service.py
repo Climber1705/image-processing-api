@@ -8,6 +8,7 @@ from unittest.mock import Mock
 from PIL import Image
 
 from app.editing.domain.errors import ImageEditError
+from app.editing.filename import build_display_filename
 from app.editing.service import ImageEditService
 from app.media.domain.dtos import ImageDTO
 from app.storage.local_storage import LocalImageStorage
@@ -63,13 +64,13 @@ class TestImageEditService:
             storage=storage,
         )
 
-    def test_build_display_filename_with_suffix(self, edit_service):
+    def test_build_display_filename_with_suffix(self):
         """Test display filename generation with suffix."""
-        assert edit_service._build_display_filename("test.jpg", "resized") == "test_resized.jpg"
+        assert build_display_filename("test.jpg", "resized") == "test_resized.jpg"
 
-    def test_build_display_filename_without_suffix(self, edit_service):
+    def test_build_display_filename_without_suffix(self):
         """Test display filename generation without suffix."""
-        assert edit_service._build_display_filename("test.jpg") == "test.jpg"
+        assert build_display_filename("test.jpg") == "test.jpg"
 
     def test_resize_image(self, edit_service, temp_directories):
         """Test image resizing stores file by UUID and registers display name."""

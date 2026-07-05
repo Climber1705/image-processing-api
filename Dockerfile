@@ -1,54 +1,74 @@
-FROM python:3.12-slim
+# ---------- Builder ----------
+FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libjpeg-dev \
-    zlib1g-dev \
-    libpng-dev \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+ENV PATH="/opt/venv/bin:$PATH"
 
-COPY requirements.txt .
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        libjpeg-dev \
+        libpng-dev \
+        zlib1g-dev && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+COPY pyproject.toml README.md ./
+COPY app ./app
 
-COPY app/ ./app/
-COPY tests/ ./tests/
+RUN python -m venv /opt/venv && \
+    pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir .
+
+# ---------- Test ----------
+FROM builder AS test
+
+COPY tests ./tests
 COPY pytest.ini .
 
-RUN mkdir -p logs app/static/uploaded app/static/edited app/static/detected
-
-RUN pytest -m "not inference" --cov=app --cov-report=term-missing --cov-fail-under=80 || exit 1
-
-RUN pip uninstall -y \
+RUN pip install --no-cache-dir ".[test]" && \
+    mkdir -p \
+        logs \
+        app/static/uploaded \
+        app/static/edited \
+        app/static/detected && \
     pytest \
-    pytest-asyncio \
-    pytest-cov \
-    pytest-mock \
-    faker \
-    httpx \
-    coverage \
-    && rm -rf /app/tests /app/pytest.ini /app/htmlcov /app/.pytest_cache /app/.coverage
+        -m "not inference" \
+        --cov=app \
+        --cov-report=term-missing \
+        --cov-fail-under=80
 
-RUN apt-get purge -y build-essential libjpeg-dev zlib1g-dev libpng-dev && \
+# ---------- Runtime ----------
+FROM python:3.12-slim AS runtime
+
+WORKDIR /app
+
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    libjpeg62-turbo \
-    zlib1g \
-    libpng16-16 \
-    && apt-get autoremove -y && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+        curl \
+        libjpeg62-turbo \
+        libpng16-16 \
+        zlib1g && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /opt/venv /opt/venv
+COPY app ./app
+
+COPY --from=test /app/pyproject.toml /tmp/.tests-passed
+
+RUN mkdir -p \
+    logs \
+    app/static/uploaded \
+    app/static/edited \
+    app/static/detected
 
 EXPOSE 8000
 
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
-    CMD curl -f http://localhost:8000/health/ready || exit 1
+    CMD curl -fsS http://localhost:8000/health/ready || exit 1
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-
