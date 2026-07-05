@@ -5,6 +5,7 @@ from PIL import Image
 from typing import Any, Callable, Optional
 
 from app.core.logging_config import get_logger
+from app.media.repository import ImageRepository
 from app.media.service import ImageService
 from app.storage.base_storage import BaseImageStorage
 
@@ -15,9 +16,11 @@ class ImageEditService:
     def __init__(
         self,
         image_service: ImageService,
+        image_repository: ImageRepository,
         storage: BaseImageStorage,
     ):
         self.image_service = image_service
+        self.image_repository = image_repository
         self.storage = storage
 
     def _build_display_filename(self, image_name: str, suffix: Optional[str] = None) -> str:
@@ -52,7 +55,7 @@ class ImageEditService:
                     storage_id=storage_id,
                     format=save_format,
                 )
-                self.image_service.register_saved_image(
+                self.image_repository.create_record(
                     path=output_path,
                     folder="edited",
                     display_filename=display_filename,

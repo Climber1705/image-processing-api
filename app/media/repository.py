@@ -1,10 +1,11 @@
 from pathlib import Path
-from typing import Any
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.models.image import ImageRecord
+from app.media.dtos import ImageDTO
+from app.media.mappers import record_to_dto
 from app.media.metadata import get_image_metadata
 
 
@@ -18,39 +19,39 @@ class ImageRepository:
         folder: str,
         display_filename: str,
         image_id: str,
-    ) -> ImageRecord:
+    ) -> ImageDTO:
         path = Path(path)
         metadata = get_image_metadata(path)
 
         existing = self.get_by_filename(display_filename, folder)
         if existing is not None:
             existing.path = str(path)
-            existing.format = metadata["format"]
-            existing.mode = metadata["mode"]
-            existing.width = metadata["width"]
-            existing.height = metadata["height"]
-            existing.size_bytes = metadata["size_bytes"]
+            existing.format = metadata.format
+            existing.mode = metadata.mode
+            existing.width = metadata.width
+            existing.height = metadata.height
+            existing.size_bytes = metadata.size_bytes
             self.session.commit()
             self.session.refresh(existing)
-            return existing
+            return record_to_dto(existing)
 
         record = ImageRecord(
             id=image_id,
             filename=display_filename,
             folder=folder,
             path=str(path),
-            format=metadata["format"],
-            mode=metadata["mode"],
-            width=metadata["width"],
-            height=metadata["height"],
-            size_bytes=metadata["size_bytes"],
+            format=metadata.format,
+            mode=metadata.mode,
+            width=metadata.width,
+            height=metadata.height,
+            size_bytes=metadata.size_bytes,
         )
         self.session.add(record)
         self.session.commit()
         self.session.refresh(record)
-        return record
+        return record_to_dto(record)
 
-    def create_from_path(self, path: str | Path, folder: str) -> ImageRecord:
+    def create_from_path(self, path: str | Path, folder: str) -> ImageDTO:
         path = Path(path)
         return self.create_record(
             path=path,
@@ -120,7 +121,7 @@ class ImageRepository:
         source_folder: str,
         target_folder: str,
         new_path: str,
-    ) -> ImageRecord | None:
+    ) -> ImageDTO | None:
         record = self.get_by_filename(filename, source_folder)
         if record is None:
             return None
@@ -129,19 +130,4 @@ class ImageRepository:
         record.path = new_path
         self.session.commit()
         self.session.refresh(record)
-        return record
-
-    @staticmethod
-    def to_metadata(record: ImageRecord) -> dict[str, Any]:
-        return {
-            "id": record.id,
-            "filename": record.filename,
-            "format": record.format,
-            "mode": record.mode,
-            "width": record.width,
-            "height": record.height,
-            "size_bytes": record.size_bytes,
-            "path": record.path,
-            "url": None,
-            "folder": record.folder,
-        }
+        return record_to_dto(record)

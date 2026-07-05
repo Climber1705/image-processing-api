@@ -15,19 +15,23 @@ class TestObjectDetectionService:
     """Test cases for ObjectDetectionService."""
 
     @pytest.fixture
+    def mock_image_repository(self):
+        return Mock()
+
+    @pytest.fixture
     def mock_image_service(self):
         mock = Mock()
         mock.get_or_create_storage_id.return_value = "output-id"
-        mock.register_saved_image.return_value = {}
         return mock
 
     @pytest.fixture
-    def detection_service(self, mock_local_storage, mock_inference_engine, mock_image_service):
+    def detection_service(self, mock_local_storage, mock_inference_engine, mock_image_service, mock_image_repository):
         """Create ObjectDetectionService with mocked dependencies."""
         return ObjectDetectionService(
             inference_engine=mock_inference_engine,
             storage=mock_local_storage,
             image_service=mock_image_service,
+            image_repository=mock_image_repository,
         )
 
     @pytest.fixture
@@ -85,7 +89,7 @@ class TestObjectDetectionService:
         assert output_path is not None
         assert "bounding_boxes" in output_path or "detected" in output_path
         detection_service.engine.predict.assert_called_once()
-        detection_service.image_service.register_saved_image.assert_called_once()
+        detection_service.image_repository.create_record.assert_called_once()
 
     def test_detect_with_visualization_single_inference(
         self, detection_service, temp_directories, sample_result, mock_local_storage

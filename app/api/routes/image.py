@@ -7,7 +7,6 @@ from app.core.rate_limiting import limiter
 from app.core.logging_config import get_logger
 from app.dependencies.services import get_image_service
 from app.dependencies.validation import get_simple_image_validator
-from app.media.service import ImageService
 from app.media.requests import (
     CreateImageForm,
     FolderFilterQuery,
@@ -16,13 +15,20 @@ from app.media.requests import (
     MoveImageRequest,
     get_create_image_form,
 )
-from app.media.schema import (
+from app.media.responses import (
     ImageDetailResponse,
     ImageListItem,
-    ImageMetadata,
     ImageResponse,
     StatusResponse,
 )
+from app.media.mappers import (
+    to_delete_status_response,
+    to_detail_response,
+    to_list_item,
+    to_status_response,
+    to_upload_response,
+)
+from app.media.service import ImageService
 from app.validation.simple_validator import SimpleImageValidator
 
 logger = get_logger("image_routes")
@@ -50,20 +56,11 @@ async def create_image(
         logger.info(
             f"Uploading image: {file.filename} as {form.filename or file.filename} with format {form.format}"
         )
-        file_path, metadata = await asyncio.to_thread(
+        result = await asyncio.to_thread(
             image_service.save_uploaded_image, file, form.filename, form.format
         )
-        logger.info(f"Image uploaded successfully: {file_path}")
-        return ImageResponse(
-            status="success",
-            path=file_path,
-            metadata=ImageMetadata(
-                format=metadata["format"],
-                mode=metadata["mode"],
-                width=metadata["width"],
-                height=metadata["height"],
-            ),
-        )
+        logger.info(f"Image uploaded successfully: {result.path}")
+        return to_upload_response(result)
     except HTTPException:
         raise
     except Exception as e:
@@ -80,7 +77,10 @@ async def list_images(
 ):
     """List images with optional folder filter and pagination."""
     logger.info(f"Fetching image list from folder: {query.folder}, limit={query.limit}, offset={query.offset}")
-    return await asyncio.to_thread(image_service.list_images, query.folder, query.limit, query.offset)
+    images = await asyncio.to_thread(
+        image_service.list_images, query.folder, query.limit, query.offset
+    )
+    return [to_list_item(image) for image in images]
 
 
 @router.delete("", response_model=StatusResponse)
@@ -92,7 +92,8 @@ async def delete_all_images(
 ):
     """Delete all images in a folder. Irreversible."""
     logger.warning(f"Clearing all images in folder: {query.folder}")
-    return await asyncio.to_thread(image_service.delete_all_images, query.folder)
+    result = await asyncio.to_thread(image_service.delete_all_images, query.folder)
+    return to_status_response(result)
 
 
 @router.get("/{filename}", response_model=ImageDetailResponse)
@@ -105,7 +106,8 @@ async def get_image(
 ):
     """Get metadata for a single image."""
     logger.info(f"Fetching details for image: {filename} in folder: {query.folder}")
-    return await asyncio.to_thread(image_service.get_image_by_id, filename, query.folder)
+    image = await asyncio.to_thread(image_service.get_image_by_id, filename, query.folder)
+    return to_detail_response(image)
 
 
 @router.delete("/{filename}", response_model=StatusResponse)
@@ -118,7 +120,8 @@ async def delete_image(
 ):
     """Delete a single image by name."""
     logger.info(f"Deleting image: {filename} from folder: {query.folder}")
-    return await asyncio.to_thread(image_service.delete_image, filename, query.folder)
+    result = await asyncio.to_thread(image_service.delete_image, filename, query.folder)
+    return to_delete_status_response(result)
 
 
 @router.patch("/{filename}", response_model=ImageDetailResponse)
@@ -131,6 +134,7 @@ async def update_image(
 ):
     """Move an image between storage folders."""
     logger.info(f"Moving image: {filename} from {move_params.source_folder} to {move_params.target_folder}")
-    return await asyncio.to_thread(
+    image = await asyncio.to_thread(
         image_service.move_image, filename, move_params.source_folder, move_params.target_folder
     )
+    return to_detail_response(image)

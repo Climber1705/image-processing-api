@@ -2,20 +2,10 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from app.media.requests import MoveImageRequest
-
-__all__ = [
-    "ImageDetailResponse",
-    "ImageListItem",
-    "ImageMetadata",
-    "ImageResponse",
-    "MoveImageRequest",
-    "StatusResponse",
-]
-
 
 class StatusResponse(BaseModel):
     status: str
+    message: str | None = None
 
 
 class ImageMetadata(BaseModel):

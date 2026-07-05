@@ -54,14 +54,14 @@ class TestImageMetadata:
 
         metadata = get_image_metadata(image_path)
 
-        assert metadata["filename"] == "test_metadata.jpg"
-        assert metadata["format"] == "JPEG"
-        assert metadata["mode"] == "RGB"
-        assert metadata["width"] == 800
-        assert metadata["height"] == 600
-        assert metadata["size_bytes"] > 0
-        assert metadata["path"] == str(image_path)
-        assert metadata["url"] is None
+        assert metadata.filename == "test_metadata.jpg"
+        assert metadata.format == "JPEG"
+        assert metadata.mode == "RGB"
+        assert metadata.width == 800
+        assert metadata.height == 600
+        assert metadata.size_bytes > 0
+        assert metadata.path == str(image_path)
+        assert metadata.url is None
 
     def test_get_metadata_png_format(self, temp_directories):
         """Test metadata extraction for PNG format."""
@@ -71,10 +71,10 @@ class TestImageMetadata:
 
         metadata = get_image_metadata(image_path)
 
-        assert metadata["format"] == "PNG"
-        assert metadata["mode"] == "RGBA"
-        assert metadata["width"] == 400
-        assert metadata["height"] == 300
+        assert metadata.format == "PNG"
+        assert metadata.mode == "RGBA"
+        assert metadata.width == 400
+        assert metadata.height == 300
 
     def test_get_metadata_file_not_found(self, temp_directories):
         """Test metadata extraction with non-existent file."""

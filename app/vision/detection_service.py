@@ -6,6 +6,7 @@ from typing import Any
 
 from app.core.config import settings
 from app.storage.base_storage import BaseImageStorage
+from app.media.repository import ImageRepository
 from app.media.service import ImageService
 from app.vision.inference.engine import InferenceEngine
 from app.vision.inference.preprocessor import load_image
@@ -23,6 +24,7 @@ class ObjectDetectionService:
         inference_engine: InferenceEngine,
         storage: BaseImageStorage,
         image_service: ImageService,
+        image_repository: ImageRepository,
         confidence_threshold: float | None = None,
     ) -> None:
         self.engine = inference_engine
@@ -33,6 +35,7 @@ class ObjectDetectionService:
         )
         self.storage = storage
         self.image_service = image_service
+        self.image_repository = image_repository
 
     @property
     def processor(self):
@@ -80,7 +83,7 @@ class ObjectDetectionService:
                 storage_id=storage_id,
                 format=save_format,
             )
-            self.image_service.register_saved_image(
+            self.image_repository.create_record(
                 path=output_path,
                 folder="detected",
                 display_filename=display_filename,

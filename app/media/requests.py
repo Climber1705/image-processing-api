@@ -3,8 +3,8 @@ from typing import Literal
 from fastapi import Form
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-ImageStorageFolder = Literal["uploaded", "edited", "detected"]
-FolderFilter = Literal["uploaded", "edited", "detected", "all"]
+from app.media.enums import FolderFilter, ImageFolder
+
 ImageFormat = Literal["JPEG", "JPG", "PNG", "GIF", "BMP", "TIFF", "WEBP"]
 
 
@@ -35,7 +35,7 @@ class CreateImageForm(BaseModel):
 
 class ListImagesQuery(BaseModel):
     folder: FolderFilter = Field(
-        default="all",
+        default=FolderFilter.ALL,
         description="Filter images by folder (defaults to 'all').",
     )
     limit: int = Field(
@@ -53,25 +53,25 @@ class ListImagesQuery(BaseModel):
 
 class FolderFilterQuery(BaseModel):
     folder: FolderFilter = Field(
-        default="all",
+        default=FolderFilter.ALL,
         description="The folder to filter by (defaults to 'all').",
     )
 
 
 class ImageFolderQuery(BaseModel):
-    folder: ImageStorageFolder = Field(
-        default="uploaded",
+    folder: ImageFolder = Field(
+        default=ImageFolder.UPLOADED,
         description="The folder containing the image (defaults to 'uploaded').",
     )
 
 
 class MoveImageRequest(BaseModel):
-    source_folder: ImageStorageFolder = Field(
-        default="uploaded",
+    source_folder: ImageFolder = Field(
+        default=ImageFolder.UPLOADED,
         description="Current folder name.",
     )
-    target_folder: ImageStorageFolder = Field(
-        default="edited",
+    target_folder: ImageFolder = Field(
+        default=ImageFolder.EDITED,
         description="Target folder name.",
     )
 

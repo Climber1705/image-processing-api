@@ -25,7 +25,8 @@ class TestImageEditService:
 
         mock_image_service.get_image_path.side_effect = get_image_path_side_effect
         mock_image_service.get_or_create_storage_id.return_value = "11111111-1111-1111-1111-111111111111"
-        mock_image_service.register_saved_image.return_value = {}
+
+        mock_image_repository = Mock()
 
         storage = LocalImageStorage(
             directories=temp_directories,
@@ -34,6 +35,7 @@ class TestImageEditService:
 
         return ImageEditService(
             image_service=mock_image_service,
+            image_repository=mock_image_repository,
             storage=storage,
         )
 
@@ -60,8 +62,8 @@ class TestImageEditService:
             assert resized_img.width == 400
             assert resized_img.height == 300
 
-        edit_service.image_service.register_saved_image.assert_called_once()
-        call_kwargs = edit_service.image_service.register_saved_image.call_args.kwargs
+        edit_service.image_repository.create_record.assert_called_once()
+        call_kwargs = edit_service.image_repository.create_record.call_args.kwargs
         assert call_kwargs["display_filename"] == "test_resize_resized.jpg"
 
     def test_rotate_image(self, edit_service, temp_directories):

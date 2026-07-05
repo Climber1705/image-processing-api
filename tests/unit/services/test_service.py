@@ -7,15 +7,17 @@ from unittest.mock import Mock
 from PIL import Image
 from pathlib import Path
 
+from app.media.dto.image import ImageDTO
+from app.media.enums import ImageFolder
 from app.media.errors import (
     ImageConflictError,
     ImageNotFoundError,
     InvalidFolderError,
     InvalidMoveError,
 )
+from app.media.mappers.image import record_to_dto
 from app.media.service import ImageService
 from app.storage.local_storage import LocalImageStorage
-from app.media.schema import ImageListItem
 
 
 @pytest.mark.unit
@@ -25,18 +27,7 @@ class TestImageService:
     @pytest.fixture
     def mock_repository(self):
         repo = Mock()
-        repo.to_metadata.side_effect = lambda record: {
-            "id": record.id,
-            "filename": record.filename,
-            "format": record.format,
-            "mode": record.mode,
-            "width": record.width,
-            "height": record.height,
-            "size_bytes": record.size_bytes,
-            "path": record.path,
-            "url": None,
-            "folder": record.folder,
-        }
+        repo.to_dto.side_effect = record_to_dto
         return repo
 
     @pytest.fixture
@@ -65,9 +56,9 @@ class TestImageService:
         record.size_bytes = 1024
         return record
 
-    def test_get_folder_names(self, image_service):
-        assert image_service._get_folder_names("uploaded") == ["uploaded"]
-        assert image_service._get_folder_names("all") == ["uploaded", "edited", "detected"]
+    def test_get_folder_names(self):
+        assert ImageFolder.get_folder_names("uploaded") == ["uploaded"]
+        assert ImageFolder.get_folder_names("all") == ["uploaded", "edited", "detected"]
 
     def test_list_images_from_db(self, image_service, mock_repository):
         record = self._make_record("listed.jpg", "uploaded", "/tmp/listed.jpg")
@@ -76,6 +67,7 @@ class TestImageService:
         results = image_service.list_images("uploaded", limit=10, offset=0)
 
         assert len(results) == 1
+        assert isinstance(results[0], ImageDTO)
         assert results[0].filename == "listed.jpg"
         mock_repository.list_by_folder.assert_called_once_with(
             folders=["uploaded"], limit=10, offset=0
@@ -113,8 +105,9 @@ class TestImageService:
         mock_repository.get_by_filename.return_value = record
 
         result = image_service.get_image_by_id("db_meta.jpg", "uploaded")
-        assert result["filename"] == "db_meta.jpg"
-        assert result["path"] == str(image_path)
+        assert isinstance(result, ImageDTO)
+        assert result.filename == "db_meta.jpg"
+        assert result.path == str(image_path)
 
     def test_get_image_by_id_not_found(self, image_service, mock_repository):
         mock_repository.get_by_filename.return_value = None
@@ -132,7 +125,7 @@ class TestImageService:
 
         result = image_service.delete_image("db_delete.jpg", "uploaded")
 
-        assert result["status"] == "success"
+        assert result.status == "success"
         assert not image_path.exists()
         mock_repository.delete_by_filename.assert_called_once_with("db_delete.jpg", "uploaded")
 
@@ -154,8 +147,8 @@ class TestImageService:
 
         result = image_service.delete_all_images("uploaded")
 
-        assert result["status"] == "success"
-        assert result["message"] == "Deleted 5 images from uploaded"
+        assert result.status == "success"
+        assert result.message == "Deleted 5 images from uploaded"
         assert len(list(temp_directories["uploaded"].glob("*.jpg"))) == 0
         mock_repository.delete_by_folders.assert_called_once_with(["uploaded"])
 
@@ -172,8 +165,8 @@ class TestImageService:
 
         result = image_service.delete_all_images("all")
 
-        assert result["status"] == "success"
-        assert "Deleted" in result["message"]
+        assert result.status == "success"
+        assert "Deleted" in result.message
         mock_repository.delete_by_folders.assert_called_once_with(
             ["uploaded", "edited", "detected"]
         )
@@ -196,7 +189,8 @@ class TestImageService:
 
         result = image_service.move_image("db_move.jpg", "uploaded", "edited")
 
-        assert result["folder"] == "edited"
+        assert isinstance(result, ImageDTO)
+        assert result.folder == "edited"
         assert not source_path.exists()
         assert (temp_directories["edited"] / "db_move.jpg").exists()
         mock_repository.update_location.assert_called_once()

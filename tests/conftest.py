@@ -253,7 +253,6 @@ def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mo
     
     mock.move_image.side_effect = move_image_side_effect
     mock.get_or_create_storage_id.return_value = "11111111-1111-1111-1111-111111111111"
-    mock.register_saved_image.return_value = {}
     mock.save_uploaded_image.side_effect = (
         lambda file, filename=None, format="JPEG": (
             mock_local_storage.save(file=file, folder="uploaded", storage_id="upload-id", format=format),
