@@ -6,6 +6,8 @@ from functools import lru_cache
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.media.enums import ImageFolder
+
 LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)
 
@@ -57,9 +59,9 @@ class Settings(BaseSettings):
     @property
     def directories(self) -> dict[str, Path]:
         dirs = {
-            "uploaded": self.UPLOADED_FOLDER,
-            "edited": self.EDITED_FOLDER,
-            "detected": self.DETECTED_FOLDER,
+            ImageFolder.UPLOADED: self.UPLOADED_FOLDER,
+            ImageFolder.EDITED: self.EDITED_FOLDER,
+            ImageFolder.DETECTED: self.DETECTED_FOLDER,
         }
         logger.debug("Configured directories: %s", dirs)
         return dirs

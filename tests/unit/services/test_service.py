@@ -4,10 +4,15 @@ Unit tests for ImageService.
 
 import pytest
 from unittest.mock import Mock
-from fastapi import HTTPException
 from PIL import Image
 from pathlib import Path
 
+from app.media.errors import (
+    ImageConflictError,
+    ImageNotFoundError,
+    InvalidFolderError,
+    InvalidMoveError,
+)
 from app.media.service import ImageService
 from app.storage.local_storage import LocalImageStorage
 from app.media.schema import ImageListItem
@@ -114,10 +119,8 @@ class TestImageService:
     def test_get_image_by_id_not_found(self, image_service, mock_repository):
         mock_repository.get_by_filename.return_value = None
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(ImageNotFoundError):
             image_service.get_image_by_id("nonexistent.jpg", "uploaded")
-
-        assert exc_info.value.status_code == 404
 
     def test_delete_image_uses_db_path(self, image_service, mock_repository, temp_directories):
         image_path = temp_directories["uploaded"] / "db_delete.jpg"
@@ -136,10 +139,8 @@ class TestImageService:
     def test_delete_image_not_found(self, image_service, mock_repository):
         mock_repository.get_by_filename.return_value = None
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(ImageNotFoundError):
             image_service.delete_image("nonexistent.jpg", "uploaded")
-
-        assert exc_info.value.status_code == 404
 
     def test_delete_all_images_single_folder(self, image_service, mock_repository, temp_directories):
         records = []
@@ -178,10 +179,8 @@ class TestImageService:
         )
 
     def test_delete_all_images_invalid_folder(self, image_service):
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(InvalidFolderError):
             image_service.delete_all_images("invalid_folder")
-
-        assert exc_info.value.status_code == 400
 
     def test_move_image_updates_db(self, image_service, mock_repository, temp_directories):
         source_path = temp_directories["uploaded"] / "db_move.jpg"
@@ -207,18 +206,14 @@ class TestImageService:
         img = Image.new("RGB", (100, 100), color="blue")
         img.save(image_path, format="JPEG")
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(InvalidMoveError):
             image_service.move_image("test.jpg", "uploaded", "uploaded")
-
-        assert exc_info.value.status_code == 400
 
     def test_move_image_not_found(self, image_service, mock_repository):
         mock_repository.get_by_filename.return_value = None
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(ImageNotFoundError):
             image_service.move_image("nonexistent.jpg", "uploaded", "edited")
-
-        assert exc_info.value.status_code == 404
 
     def test_move_image_target_exists(self, image_service, mock_repository, temp_directories):
         source_path = temp_directories["uploaded"] / "test.jpg"
@@ -230,7 +225,5 @@ class TestImageService:
         record = self._make_record("test.jpg", "uploaded", source_path)
         mock_repository.get_by_filename.return_value = record
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(ImageConflictError):
             image_service.move_image("test.jpg", "uploaded", "edited")
-
-        assert exc_info.value.status_code == 409
