@@ -1,6 +1,5 @@
 import asyncio
 from pathlib import Path
-
 from fastapi import UploadFile
 
 from app.validation.validator import validate_upload
