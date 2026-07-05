@@ -1,17 +1,17 @@
 import os
-import torch
 from io import BytesIO
-from random import randint
 from tempfile import SpooledTemporaryFile
+
 from fastapi import Depends, Request, UploadFile
-from PIL import Image, ImageDraw, ImageFont
-from typing import List, Dict, Tuple, Annotated, Union
-
-
+from PIL import Image
+from typing import Annotated, Any
 
 from app.core.config import settings
 from app.services.image.storage.local_storage import LocalImageStorage, get_local_image_storage
 from app.services.inference.engine import InferenceEngine
+from app.services.inference.preprocessor import load_image
+from app.services.inference.schemas import DetectionResult
+from app.services.inference.visualizer import draw_bounding_boxes
 from app.core.logging_config import get_logger
 
 LocalImageStorageDep = Annotated[LocalImageStorage, Depends(get_local_image_storage)]
@@ -27,8 +27,6 @@ class ObjectDetectionService:
         confidence_threshold: float | None = None,
     ) -> None:
         self.engine = inference_engine
-        self.processor = inference_engine.processor
-        self.model = inference_engine.model
         self.confidence_threshold = (
             confidence_threshold
             if confidence_threshold is not None
@@ -36,22 +34,13 @@ class ObjectDetectionService:
         )
         self.local_storage = local_storage
 
-    def _get_font(self, size: int):
-        try:
-            return ImageFont.truetype("arial.ttf", size)
-        except IOError:
-            logger.warning("Arial font not found, using default font.")
-            return ImageFont.load_default()
+    @property
+    def processor(self):
+        return self.engine.processor
 
-    def _get_random_colour(self) -> Tuple[str, Tuple[int, int, int]]:
-        r, g, b = randint(0, 255), randint(0, 255), randint(0, 255)
-        hex_color = f"#{r:02x}{g:02x}{b:02x}"
-        return hex_color, (r, g, b)
-
-    def _get_text_colour(self, rgb: Tuple[int, int, int]) -> str:
-        r, g, b = rgb
-        brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-        return "#ffffff" if brightness < 0.5 else "#000000"
+    @property
+    def model(self):
+        return self.engine.model
 
     def _pillow_to_uploadfile(self, image: Image.Image, filename: str = "image.png") -> UploadFile:
         img_byte_arr = BytesIO()
@@ -64,34 +53,15 @@ class ObjectDetectionService:
 
         return UploadFile(filename=filename, file=temp_file)
 
-    def get_bounding_boxes(self, image_path: str) -> str:
-        image = Image.open(image_path).convert("RGB")
-        image_copy = image.copy()
-        draw = ImageDraw.Draw(image_copy)
-        font = self._get_font(16)
+    def _predict(self, image_path: str) -> tuple[DetectionResult, Image.Image]:
+        image = load_image(image_path)
+        result = self.engine.predict(image, self.confidence_threshold)
+        return result, image
 
-        inputs = self.processor(images=image, return_tensors="pt")
-        outputs = self.model(**inputs)
+    def detect_with_visualization(self, image_path: str) -> dict[str, Any]:
+        result, image = self._predict(image_path)
 
-        target_sizes = torch.tensor([image.size[::-1]])
-        results = self.processor.post_process_object_detection(
-            outputs, target_sizes=target_sizes, threshold=self.confidence_threshold
-        )[0]
-
-        for score, label, box in zip(results["scores"], results["labels"], results["boxes"]):
-            box = [round(coord) for coord in box.tolist()]
-            x, y, x2, y2 = box
-
-            class_name = self.model.config.id2label[label.item()]
-            confidence = score.item()
-
-            colour, rgb = self._get_random_colour()
-            draw.rectangle([x, y, x2, y2], outline=colour, width=3)
-
-            text = f"{class_name}: {confidence:.2f}"
-            text_bbox = draw.textbbox((x, y - 20), text, font=font)
-            draw.rectangle(text_bbox, fill=colour)
-            draw.text((x, y - 20), text, fill=self._get_text_colour(rgb), font=font)
+        annotated = draw_bounding_boxes(image, result.detections)
 
         original_filename = os.path.basename(image_path)
         name, ext = os.path.splitext(original_filename)
@@ -99,36 +69,28 @@ class ObjectDetectionService:
         save_format = ext.lstrip(".").upper() or "PNG"
 
         output_path = self.local_storage.save(
-            file=self._pillow_to_uploadfile(image_copy, filename=new_filename),
+            file=self._pillow_to_uploadfile(annotated, filename=new_filename),
             folder="detected",
             filename=new_filename,
             format=save_format,
         )
 
         logger.info(f"Bounding boxes saved to: {output_path}")
-        return output_path
+        return {
+            "image_with_boxes": output_path,
+            "detections": result.to_dict_list(),
+            "model_name": result.model_name,
+            "model_version": result.model_version,
+        }
 
-    def get_detected_objects(self, image_path: str) -> List[Dict[str, Union[str, float, List[float]]]]:
-        image = Image.open(image_path).convert("RGB")
+    def get_bounding_boxes(self, image_path: str) -> str:
+        data = self.detect_with_visualization(image_path)
+        return data["image_with_boxes"]
 
-        inputs = self.processor(images=image, return_tensors="pt")
-        outputs = self.model(**inputs)
-
-        target_sizes = torch.tensor([image.size[::-1]])
-        results = self.processor.post_process_object_detection(
-            outputs, target_sizes=target_sizes, threshold=self.confidence_threshold
-        )[0]
-
-        detections = []
-        for score, label, box in zip(results["scores"], results["labels"], results["boxes"]):
-            detections.append({
-                "label": self.model.config.id2label[label.item()],
-                "confidence": score.item(),
-                "box": box.tolist(),
-            })
-
-        logger.info(f"Detected {len(detections)} objects.")
-        return detections
+    def get_detected_objects(self, image_path: str) -> list[dict]:
+        result, _ = self._predict(image_path)
+        logger.info(f"Detected {len(result.detections)} objects.")
+        return result.to_dict_list()
 
 
 def get_object_detection_service(
