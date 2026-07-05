@@ -71,18 +71,41 @@ On boot (`app/core/lifespan.py`):
 |------|---------|------|
 | Fast (CI default) | `pytest -m "not inference"` | Every PR/push |
 | Integration | `pytest tests/integration` | Local / CI |
-| Real model (slow) | `pytest -m inference` | Manual / nightly |
+| Real model (slow) | `pytest -m inference --no-cov` | Manual / nightly (`.github/workflows/test-inference.yml`) |
 
 Fast tests mock `InferenceEngine` and never download DETR weights.
+
+Smoke tests in `tests/inference/test_detr_smoke.py` cover:
+
+- Direct `InferenceEngine.predict()` (640×480 and large-input resize path)
+- `POST /v1/inference/detect` over HTTP with a real warmed-up model
+- `GET /health/ready` after model load
 
 ### Running inference-marked tests locally
 
 ```bash
 # Requires network on first run to download model weights; CPU recommended
-pytest -m inference
+pytest -m inference --no-cov
 ```
 
 Mark slow real-model tests with `@pytest.mark.inference`. These are excluded from PR CI and the Docker build gate.
+
+## CPU latency (measured)
+
+Benchmarks from `scripts/benchmark_inference.py` on **CPU** (`INFERENCE_DEVICE=cpu`), model `facebook/detr-resnet-50`, 5 timed runs per size after 1 warmup run (measured 2026-07-05 on Linux):
+
+| Input size | p50 | p95 | Notes |
+|------------|-----|-----|-------|
+| 640×480 | ~3.8 s | ~3.8 s | Typical upload size |
+| 1333×1000 | ~3.5 s | ~3.5 s | Downscaled to `MAX_IMAGE_DIMENSION` (1333) before inference |
+
+Reproduce:
+
+```bash
+python scripts/benchmark_inference.py --runs 5 --warmup 1
+```
+
+First run downloads Hugging Face weights; subsequent runs reflect steady-state inference only. GPU would lower these numbers but is not benchmarked in-repo.
 
 ## Environment variables
 

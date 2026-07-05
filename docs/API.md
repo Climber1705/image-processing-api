@@ -272,9 +272,14 @@ Error response format:
 
 ## Image Formats
 
-Supported image formats:
-- **JPEG** (.jpg, .jpeg)
-- **PNG** (.png)
+Supported upload MIME types (aligned with `Settings.FORMAT_EXTENSIONS` in `app/core/config.py`):
+
+- **JPEG** (`image/jpeg`)
+- **PNG** (`image/png`)
+- **GIF** (`image/gif`)
+- **BMP** (`image/bmp`)
+- **TIFF** (`image/tiff`)
+- **WEBP** (`image/webp`)
 
 Maximum file size: 5MB per image
 

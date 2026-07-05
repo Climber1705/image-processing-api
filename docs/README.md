@@ -24,6 +24,7 @@ Welcome to the Image Processing API documentation.
 
 - **[Architecture Overview](ARCHITECTURE.md)** — Bounded contexts, DETR model, design patterns.
 - **[Development Guide](DEVELOPMENT.md)** — Testing, code structure, conventions.
+- **[ADR 001: Local filesystem storage](adr/001-local-filesystem-storage.md)** — Why local disk was chosen over object storage.
 
 ### Troubleshooting
 

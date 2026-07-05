@@ -49,17 +49,18 @@ flowchart LR
 ### DevOps
 - Dockerfile runs the fast test suite with an 80% coverage gate before producing the runtime image (`Dockerfile` line 24).
 - GitHub Actions runs `pytest -m "not inference"` with the same coverage threshold on push and pull request (`.github/workflows/test-fast.yml`).
+- Nightly/manual workflow runs real-model inference smoke tests (`.github/workflows/test-inference.yml`).
 - Production `docker-compose.yml` mounts named volumes for image folders and configures a readiness healthcheck.
 
 ### Testing
 - Unit and integration tests under `tests/`; integration tests override dependencies and mock the inference engine to avoid loading PyTorch in CI (`tests/conftest.py`).
-- Slow, real-model tests are reserved for the `inference` marker (`pytest.ini`); none are in the default fast suite today.
+- Real-model smoke tests use `@pytest.mark.inference` (`tests/inference/`); run locally with `pytest -m inference --no-cov`. Nightly/manual CI: `.github/workflows/test-inference.yml`.
 
 ## Engineering trade-offs
 
 | Decision | Chosen | Rationale |
 |---|---|---|
-| Storage | Local filesystem behind `BaseImageStorage` | Self-contained deployment; interface leaves room for another backend without changing services. |
+| Storage | Local filesystem behind `BaseImageStorage` | Self-contained deployment; see [ADR 001](docs/adr/001-local-filesystem-storage.md) for rationale and migration path. |
 | Image metadata | SQLite + content-hash uniqueness | Supports list/filter/move without scanning the filesystem; deduplicates uploads per folder. |
 | Detection model | Pretrained DETR (`facebook/detr-resnet-50`) | No training infrastructure; COCO weights cover general object classes out of the box. |
 | Model lifecycle | Load at startup + optional warmup | Predictable `/health/ready` checks; first boot pays Hugging Face download cost once. |
@@ -98,7 +99,24 @@ curl -X POST "http://localhost:8000/images" \
   -F "format=JPEG"
 ```
 
-Run object detection:
+End-to-end workflow (upload → resize → detect with visualization):
+
+```bash
+# 1. Upload
+curl -X POST "http://localhost:8000/images" \
+  -F "file=@photo.jpg" \
+  -F "filename=demo" \
+  -F "format=JPEG"
+
+# 2. Resize (reads from uploaded/, writes to edited/)
+curl -X POST "http://localhost:8000/images/demo.jpg/edits/resize?width=400&height=300"
+
+# 3. Detect on a fresh upload and persist annotated output to detected/
+curl -X POST "http://localhost:8000/v1/inference/detect/visualize?persist=true" \
+  -F "file=@photo.jpg"
+```
+
+Run object detection only:
 
 ```bash
 curl -X POST "http://localhost:8000/v1/inference/detect" \
@@ -109,6 +127,12 @@ Run tests (matches CI and Docker build gate):
 
 ```bash
 pytest -m "not inference"
+```
+
+Run real-model inference smoke tests (slow; downloads DETR weights on first run):
+
+```bash
+pytest -m inference --no-cov
 ```
 
 Further setup, API reference, and deployment notes: [`docs/`](docs/README.md).

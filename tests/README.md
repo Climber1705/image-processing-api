@@ -9,6 +9,7 @@ Unit and integration tests for the Image Processing API, targeting 80%+ code cov
 ```
 tests/
 ├── conftest.py              # Shared fixtures and test configuration
+├── inference/               # Real-model smoke tests (@pytest.mark.inference)
 ├── unit/
 │   ├── api/                 # Health route tests
 │   ├── media/               # Media domain tests
@@ -41,7 +42,7 @@ pytest --cov=app --cov-report=html
 ### Run slow inference tests (requires model download)
 
 ```bash
-pytest -m inference
+pytest -m inference --no-cov
 ```
 
 ## Test Coverage by Domain
