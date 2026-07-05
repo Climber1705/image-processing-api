@@ -1,12 +1,12 @@
 from PIL import Image
 from io import BytesIO
-from pathlib import Path
 from typing import Any, Callable
 
 from app.core.logging_config import get_logger
 from app.editing import operations
 from app.editing.domain.dtos import EditResultDTO
 from app.editing.domain.errors import ImageEditError
+from app.editing.filename import build_display_filename
 from app.media.domain.enums import ImageFolder
 from app.media.domain.errors import ImageNotFoundError
 from app.media.repository import ImageRepository
@@ -27,14 +27,6 @@ class ImageEditService:
         self.image_repository = image_repository
         self.storage = storage
 
-    def _build_display_filename(self, image_name: str, suffix: str | None = None) -> str:
-        path = Path(image_name)
-        stem = path.stem
-        ext = path.suffix or ".jpg"
-        if suffix:
-            return f"{stem}_{suffix}{ext}"
-        return f"{stem}{ext}"
-
     def _apply_edit(
         self,
         image_name: str,
@@ -44,7 +36,7 @@ class ImageEditService:
         **kwargs: Any,
     ) -> EditResultDTO:
         image_path = self.image_service.get_image_path(image_name, ImageFolder.UPLOADED)
-        display_filename = self._build_display_filename(image_name, suffix)
+        display_filename = build_display_filename(image_name, suffix)
         storage_id = self.image_repository.get_or_create_image_id(
             display_filename,
             ImageFolder.EDITED,
