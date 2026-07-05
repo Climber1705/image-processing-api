@@ -2,7 +2,6 @@ from typing import Dict, List, Optional, Annotated, Tuple, Any
 from fastapi import UploadFile, Depends
 from pathlib import Path
 
-from app.utils.file_operations.directory_utils import DirectoryManager, get_directory_manager
 from app.services.image.storage.local_storage import LocalImageStorage, get_local_image_storage
 from app.services.image.crud_operations import ImageCRUDService, get_image_crud_service
 from app.services.image.metadata_handler import ImageMetadataExtractor, get_image_metadata_extractor
@@ -10,7 +9,6 @@ from app.core.logging_config import get_logger
 
 logger = get_logger("image_manager")
 
-DirectoryManagerDep = Annotated[DirectoryManager, Depends(get_directory_manager)]
 LocalImageStorageDep = Annotated[LocalImageStorage, Depends(get_local_image_storage)]
 ImageCRUDServiceDep = Annotated[ImageCRUDService, Depends(get_image_crud_service)]
 ImageMetadataExtractorDep = Annotated[ImageMetadataExtractor, Depends(get_image_metadata_extractor)]
@@ -19,12 +17,10 @@ ImageMetadataExtractorDep = Annotated[ImageMetadataExtractor, Depends(get_image_
 class ImageManager:
     def __init__(
         self,
-        directory_manager: DirectoryManagerDep,
         local_storage: LocalImageStorageDep,
         image_CRUD: ImageCRUDServiceDep,
         metadata_extractor: ImageMetadataExtractorDep,
     ):
-        self.directory_manager = directory_manager
         self.local_storage = local_storage
         self.image_CRUD = image_CRUD
         self.metadata_extractor = metadata_extractor
@@ -73,13 +69,11 @@ class ImageManager:
 
 
 def get_image_manager(
-    directory_manager: DirectoryManagerDep,
     local_storage: LocalImageStorageDep,
     image_CRUD: ImageCRUDServiceDep,
     metadata_extractor: ImageMetadataExtractorDep,
 ) -> ImageManager:
     return ImageManager(
-        directory_manager=directory_manager,
         local_storage=local_storage,
         image_CRUD=image_CRUD,
         metadata_extractor=metadata_extractor,
