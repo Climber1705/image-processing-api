@@ -1,12 +1,11 @@
-import os
-
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
+from app.storage.directories import storage_dirs_writable
+
 
 router = APIRouter(tags=["System"])
-
 
 @router.get("/")
 async def root():
@@ -28,22 +27,13 @@ async def health_live():
     )
 
 
-def _storage_dirs_writable() -> bool:
-    for path in (settings.UPLOADED_FOLDER, settings.EDITED_FOLDER, settings.DETECTED_FOLDER):
-        if not path.exists() or not path.is_dir():
-            return False
-        if not os.access(path, os.W_OK):
-            return False
-    return True
-
-
 @router.get("/health/ready")
 async def health_ready(request: Request):
     engine = getattr(request.app.state, "inference_engine", None)
     checks = {
         "model_loaded": engine is not None,
         "warmup_complete": engine is not None and engine.is_ready,
-        "storage_writable": _storage_dirs_writable(),
+        "storage_writable": storage_dirs_writable(settings.directories.values()),
     }
     ready = all(checks.values())
 
