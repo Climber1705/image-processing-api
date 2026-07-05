@@ -37,21 +37,21 @@ The Swagger UI provides:
 | POST | `/images` | Upload a new image | 10/min |
 | GET | `/images` | List images with pagination | 60/min |
 | DELETE | `/images` | Delete all images in folder | 2/hour |
-| GET | `/images/{image_name}` | Get image metadata (includes width and height) | 30/min |
-| PATCH | `/images/{image_name}` | Move image between folders | 20/min |
-| DELETE | `/images/{image_name}` | Delete an image | 10/min |
+| GET | `/images/{filename}` | Get image metadata (includes width and height) | 30/min |
+| PATCH | `/images/{filename}` | Move image between folders | 20/min |
+| DELETE | `/images/{filename}` | Delete an image | 10/min |
 
 ### Image Editing (`/images/{image_name}/edits`)
 
 | Method | Endpoint | Description | Rate Limit |
 |--------|----------|-------------|------------|
-| POST | `/images/{image_name}/edits/resize` | Resize image | 10/min |
-| POST | `/images/{image_name}/edits/grayscale` | Convert to grayscale | 20/min |
-| POST | `/images/{image_name}/edits/rotate` | Rotate image | 15/min |
-| POST | `/images/{image_name}/edits/blur` | Apply blur filter | 10/min |
-| POST | `/images/{image_name}/edits/sharpen` | Sharpen image | 10/min |
-| POST | `/images/{image_name}/edits/brightness` | Adjust brightness | 20/min |
-| POST | `/images/{image_name}/edits/contrast` | Adjust contrast | 20/min |
+| POST | `/images/{filename}/edits/resize` | Resize image | 10/min |
+| POST | `/images/{filename}/edits/grayscale` | Convert to grayscale | 20/min |
+| POST | `/images/{filename}/edits/rotate` | Rotate image | 15/min |
+| POST | `/images/{filename}/edits/blur` | Apply blur filter | 10/min |
+| POST | `/images/{filename}/edits/sharpen` | Sharpen image | 10/min |
+| POST | `/images/{filename}/edits/brightness` | Adjust brightness | 20/min |
+| POST | `/images/{filename}/edits/contrast` | Adjust contrast | 20/min |
 
 ### Object Detection (`/v1/inference`)
 
@@ -61,7 +61,7 @@ The Swagger UI provides:
 | POST | `/v1/inference/detect/visualize` | Detect with bounding-box visualization | 5/min |
 | GET | `/v1/inference/models` | Model metadata and readiness | 30/min |
 
-Both detect endpoints accept either a **multipart file upload** or a **stored image reference** via query params (`image_name`, `folder`).
+Both detect endpoints accept either a **multipart file upload** or a **stored image reference** via query params (`filename`, `folder`).
 
 ## Example Requests
 
