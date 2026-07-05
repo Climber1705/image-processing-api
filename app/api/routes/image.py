@@ -37,7 +37,7 @@ router = APIRouter(
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=ImageResponse)
 @limiter.limit("10/minute")
 async def create_image(
-    _: Request,
+    request: Request,
     file: UploadFile,
     form: CreateImageForm = Depends(get_create_image_form),
     image_service: ImageService = Depends(get_image_service),
@@ -74,7 +74,7 @@ async def create_image(
 @router.get("", response_model=list[ImageListItem])
 @limiter.limit("60/minute")
 async def list_images(
-    _: Request,
+    request: Request,
     query: Annotated[ListImagesQuery, Query()],
     image_service: ImageService = Depends(get_image_service),
 ):
@@ -86,7 +86,7 @@ async def list_images(
 @router.delete("", response_model=StatusResponse)
 @limiter.limit("2/hour")
 async def delete_all_images(
-    _: Request,
+    request: Request,
     query: Annotated[FolderFilterQuery, Query()],
     image_service: ImageService = Depends(get_image_service),
 ):
@@ -98,7 +98,7 @@ async def delete_all_images(
 @router.get("/{filename}", response_model=ImageDetailResponse)
 @limiter.limit("30/minute")
 async def get_image(
-    _: Request,
+    request: Request,
     filename: str,
     query: Annotated[ImageFolderQuery, Query()],
     image_service: ImageService = Depends(get_image_service),
@@ -111,7 +111,7 @@ async def get_image(
 @router.delete("/{filename}", response_model=StatusResponse)
 @limiter.limit("10/minute")
 async def delete_image(
-    _: Request,
+    request: Request,
     filename: str,
     query: Annotated[ImageFolderQuery, Query()],
     image_service: ImageService = Depends(get_image_service),
@@ -124,7 +124,7 @@ async def delete_image(
 @router.patch("/{filename}", response_model=ImageDetailResponse)
 @limiter.limit("20/minute")
 async def update_image(
-    _: Request,
+    request: Request,
     filename: str,
     move_params: MoveImageRequest,
     image_service: ImageService = Depends(get_image_service),
