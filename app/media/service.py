@@ -1,5 +1,4 @@
 from pathlib import Path
-
 from fastapi import UploadFile
 
 from app.core.logging_config import get_logger
@@ -10,6 +9,7 @@ from app.media.dtos import (
     SaveImageResultDTO,
 )
 from app.media.enums import FolderFilter, ImageFolder
+from app.media.filename import get_display_filename
 from app.media.errors import (
     ImageConflictError,
     ImageCreationError,
@@ -40,27 +40,14 @@ class ImageService:
         self.storage = storage
         self.validator = validator
 
-    def _resolve_display_filename(
-        self,
-        filename: str | None,
-        original_filename: str | None,
-        format: str,
-    ) -> str:
-        ext = self.validator.get_extension(self.validator.validate_format(format))
-        if filename:
-            return f"{Path(filename).stem}{ext}"
-        if original_filename:
-            original = Path(original_filename)
-            return f"{original.stem}{ext}"
-        return f"image{ext}"
-
     def upload_image(
         self,
         file: UploadFile,
         filename: str | None = None,
         format: str = "JPEG",
     ) -> SaveImageResultDTO:
-        display_filename = self._resolve_display_filename(filename, file.filename, format)
+        extension = self.validator.get_extension(self.validator.validate_format(format))
+        display_filename = get_display_filename(filename, file.filename, extension)
         logger.info(f"Saving uploaded image as {display_filename}")
 
         file.file.seek(0)
