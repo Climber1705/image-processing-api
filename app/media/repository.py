@@ -1,4 +1,3 @@
-import uuid
 from pathlib import Path
 from typing import Any
 
@@ -14,11 +13,17 @@ class ImageRepository:
         self.session = session
         self.metadata_extractor = metadata_extractor
 
-    def create_from_path(self, path: str | Path, folder: str) -> ImageRecord:
+    def create_record(
+        self,
+        path: str | Path,
+        folder: str,
+        display_filename: str,
+        image_id: str,
+    ) -> ImageRecord:
         path = Path(path)
         metadata = self.metadata_extractor.get_metadata(path)
 
-        existing = self.get_by_filename(path.name, folder)
+        existing = self.get_by_filename(display_filename, folder)
         if existing is not None:
             existing.path = str(path)
             existing.format = metadata["format"]
@@ -31,8 +36,8 @@ class ImageRepository:
             return existing
 
         record = ImageRecord(
-            id=str(uuid.uuid4()),
-            filename=path.name,
+            id=image_id,
+            filename=display_filename,
             folder=folder,
             path=str(path),
             format=metadata["format"],
@@ -45,6 +50,15 @@ class ImageRepository:
         self.session.commit()
         self.session.refresh(record)
         return record
+
+    def create_from_path(self, path: str | Path, folder: str) -> ImageRecord:
+        path = Path(path)
+        return self.create_record(
+            path=path,
+            folder=folder,
+            display_filename=path.name,
+            image_id=path.stem,
+        )
 
     def get_by_id(self, image_id: str) -> ImageRecord | None:
         return self.session.get(ImageRecord, image_id)
@@ -114,7 +128,6 @@ class ImageRepository:
 
         record.folder = target_folder
         record.path = new_path
-        record.filename = Path(new_path).name
         self.session.commit()
         self.session.refresh(record)
         return record

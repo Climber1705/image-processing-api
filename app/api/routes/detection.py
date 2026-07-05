@@ -30,7 +30,7 @@ async def create_detection_with_visualization(
     image_path = await asyncio.to_thread(file_resolver.find_and_validate_image, image_name)
 
     logger.info(f"Processing image for bounding boxes: {image_name}")
-    data = await asyncio.to_thread(service.detect_with_visualization, image_path)
+    data = await asyncio.to_thread(service.detect_with_visualization, image_path, image_name)
 
     execution_time = time.time() - start_time
     logger.info(

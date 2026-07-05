@@ -27,10 +27,9 @@ from app.media.utils.directory_utils import DirectoryManager
 from app.media.utils.file_utils import FilePathResolver
 from app.media.utils.validator.simple_validator import SimpleImageValidator
 from app.storage.local_storage import LocalImageStorage
-from app.media.crud_operations import ImageCRUDService
-from app.media.metadata_handler import ImageMetadataExtractor
+from app.media.service import ImageService
+from app.media.metadata import ImageMetadataExtractor
 from app.editing.image_editor import ImageEditService
-from app.media.image_service import ImageService
 from app.vision.detection_service import ObjectDetectionService
 from app.dependencies.utils import (
     get_directory_manager,
@@ -39,7 +38,6 @@ from app.dependencies.utils import (
 )
 from app.dependencies.storage import get_local_image_storage
 from app.dependencies.services import (
-    get_image_crud_service,
     get_image_metadata_extractor,
     get_image_edit_service,
     get_image_service,
@@ -176,13 +174,15 @@ def mock_metadata_extractor() -> Mock:
 
 
 @pytest.fixture
-def mock_image_crud_service(temp_directories: Dict[str, Path]) -> Mock:
-    """Create a mock ImageCRUDService."""
-    mock = Mock(spec=ImageCRUDService)
-    
+def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mock, mock_metadata_extractor: Mock) -> Mock:
+    """Create a mock ImageService."""
+    mock = Mock(spec=ImageService)
+    mock.local_storage = mock_local_storage
+    mock.metadata_extractor = mock_metadata_extractor
+
     def get_image_path_side_effect(image_name: str, folder: str = "uploaded") -> Path:
         return temp_directories.get(folder, temp_directories["uploaded"]) / image_name
-    
+
     mock.get_image_path.side_effect = get_image_path_side_effect
 
     def list_images_side_effect(
@@ -327,6 +327,26 @@ def mock_image_crud_service(temp_directories: Dict[str, Path]) -> Mock:
             }
     
     mock.move_image.side_effect = move_image_side_effect
+    mock.get_or_create_storage_id.return_value = "11111111-1111-1111-1111-111111111111"
+    mock.register_saved_image.return_value = {}
+    mock.save_uploaded_image.side_effect = (
+        lambda file, filename=None, format="JPEG": (
+            mock_local_storage.save(file=file, folder="uploaded", storage_id="upload-id", format=format),
+            {
+                "filename": filename or "test.jpg",
+                "format": format,
+                "mode": "RGB",
+                "width": 100,
+                "height": 100,
+                "size_bytes": 1024,
+                "path": str(temp_directories["uploaded"] / (filename or "test.jpg")),
+                "url": None,
+                "folder": "uploaded",
+            },
+        )
+    )
+    mock.get_image_dimensions.side_effect = lambda path: mock_metadata_extractor.get_dimensions(path)
+    mock.get_image_metadata.side_effect = lambda path: mock_metadata_extractor.get_metadata(path)
     return mock
 
 
@@ -335,10 +355,11 @@ def mock_local_storage(temp_directories: Dict[str, Path]) -> Mock:
     """Create a mock LocalImageStorage."""
     mock = Mock(spec=LocalImageStorage)
     
-    def save_side_effect(file, folder: str = "uploaded", filename: str = None, format: str = "JPEG") -> str:
-        if filename is None:
-            filename = f"{uuid.uuid4()}.jpg"
-        file_path = temp_directories[folder] / filename
+    def save_side_effect(file, folder: str = "uploaded", storage_id: str = None, format: str = "JPEG") -> str:
+        if storage_id is None:
+            storage_id = str(uuid.uuid4())
+        ext = ".jpg" if format.upper() in {"JPEG", "JPG"} else f".{format.lower()}"
+        file_path = temp_directories[folder] / f"{storage_id}{ext}"
         file_path.touch()
         return str(file_path)
 
@@ -473,52 +494,6 @@ def valid_upload_file(upload_file_factory) -> UploadFile:
 
 
 @pytest.fixture
-def mock_image_service(
-    mock_local_storage: Mock,
-    mock_image_crud_service: Mock,
-    mock_metadata_extractor: Mock,
-    temp_directories: Dict[str, Path],
-) -> Mock:
-    """Create a mock ImageService."""
-    mock = Mock(spec=ImageService)
-    mock.local_storage = mock_local_storage
-    mock.image_crud = mock_image_crud_service
-    mock.metadata_extractor = mock_metadata_extractor
-
-    mock.save_uploaded_image.side_effect = (
-        lambda file, filename=None, format="JPEG": (
-            mock_local_storage.save(file=file, folder="uploaded", filename=filename, format=format),
-            {
-                "filename": filename or "test.jpg",
-                "format": format,
-                "mode": "RGB",
-                "width": 100,
-                "height": 100,
-                "size_bytes": 1024,
-                "path": str(temp_directories["uploaded"] / (filename or "test.jpg")),
-                "url": None,
-                "folder": "uploaded",
-            },
-        )
-    )
-    mock.get_image_path.side_effect = lambda name, folder="uploaded": str(
-        mock_image_crud_service.get_image_path(name, folder)
-    )
-    mock.get_image_dimensions.side_effect = lambda path: mock_metadata_extractor.get_dimensions(path)
-    mock.get_image_metadata.side_effect = lambda path: mock_metadata_extractor.get_metadata(path)
-    mock.get_image_by_id.side_effect = lambda *args, **kwargs: mock_image_crud_service.get_image_by_id(
-        *args, **kwargs
-    )
-    mock.list_images.side_effect = lambda *args, **kwargs: mock_image_crud_service.list_images(*args, **kwargs)
-    mock.delete_image.side_effect = lambda *args, **kwargs: mock_image_crud_service.delete_image(*args, **kwargs)
-    mock.delete_all_images.side_effect = lambda *args, **kwargs: mock_image_crud_service.delete_all_images(
-        *args, **kwargs
-    )
-    mock.move_image.side_effect = lambda *args, **kwargs: mock_image_crud_service.move_image(*args, **kwargs)
-    return mock
-
-
-@pytest.fixture
 def mock_inference_engine(mock_detr_model):
     """Create a mock InferenceEngine backed by mocked DETR components."""
     from app.vision.inference.engine import EngineMetadata, InferenceEngine
@@ -555,7 +530,6 @@ def test_client_with_overrides(
     mock_file_path_resolver: Mock,
     mock_image_validator: Mock,
     mock_metadata_extractor: Mock,
-    mock_image_crud_service: Mock,
     mock_local_storage: Mock,
     mock_image_edit_service: Mock,
     mock_image_service: Mock,
@@ -565,25 +539,22 @@ def test_client_with_overrides(
     """Create a FastAPI test client with dependency overrides."""
     def override_get_directories():
         return temp_directories
-    
+
     def override_get_directory_manager():
         return mock_directory_manager
-    
+
     def override_get_file_path_resolver():
         return mock_file_path_resolver
-    
+
     def override_get_simple_image_validator():
         return mock_image_validator
-    
+
     def override_get_image_metadata_extractor():
         return mock_metadata_extractor
-    
-    def override_get_image_crud_service():
-        return mock_image_crud_service
-    
+
     def override_get_local_image_storage():
         return mock_local_storage
-    
+
     def override_get_image_edit_service():
         return mock_image_edit_service
 
@@ -598,7 +569,6 @@ def test_client_with_overrides(
     app.dependency_overrides[get_file_path_resolver] = override_get_file_path_resolver
     app.dependency_overrides[get_simple_image_validator] = override_get_simple_image_validator
     app.dependency_overrides[get_image_metadata_extractor] = override_get_image_metadata_extractor
-    app.dependency_overrides[get_image_crud_service] = override_get_image_crud_service
     app.dependency_overrides[get_local_image_storage] = override_get_local_image_storage
     app.dependency_overrides[get_image_edit_service] = override_get_image_edit_service
     app.dependency_overrides[get_image_service] = override_get_image_service

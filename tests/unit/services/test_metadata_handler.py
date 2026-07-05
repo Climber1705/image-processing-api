@@ -6,7 +6,7 @@ import pytest
 from PIL import Image
 from fastapi import HTTPException
 
-from app.media.metadata_handler import ImageMetadataExtractor
+from app.media.metadata import ImageMetadataExtractor
 
 
 @pytest.mark.unit
