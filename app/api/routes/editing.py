@@ -7,7 +7,7 @@ from app.editing.api import EditResponse, RotateEditRequest, SharpenEditRequest
 from app.editing.api.mappers import to_edit_response
 from app.editing.service import ImageEditService
 
-router = APIRouter(prefix="/images/{filename}/edits", tags=["Image Editing"])
+router = APIRouter(prefix="/images/{filename}/edits", tags=["Editing"])
 
 
 @router.post("/resize", response_model=EditResponse)
