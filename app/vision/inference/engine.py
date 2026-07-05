@@ -1,12 +1,11 @@
-import warnings
-
 import torch
+import warnings
 from PIL import Image
 from transformers import DetrForObjectDetection, DetrImageProcessor
 
 from app.core.config import Settings
 from app.core.logging_config import get_logger
-from app.vision.inference.mappers import to_detection_dtos, to_detection_result
+from app.vision.inference.mappers import to_detection_result
 from app.vision.inference.postprocessor import postprocess
 from app.vision.inference.preprocessor import preprocess
 from app.vision.inference.schemas import DetectionResult, EngineMetadata
