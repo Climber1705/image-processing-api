@@ -25,7 +25,8 @@ from app.main import app
 from app.storage.directories import DirectoryManager
 from app.storage.local_storage import LocalImageStorage
 from app.media.service import ImageService
-from app.editing.image_editor import ImageEditService
+from app.editing.domain.dtos import EditResultDTO
+from app.editing.service import ImageEditService
 from app.vision.detection_service import ObjectDetectionService
 from app.dependencies.storage import get_local_image_storage
 from app.dependencies.services import (
@@ -280,7 +281,21 @@ def mock_image_edit_service(temp_directories: Dict[str, Path]) -> Mock:
         output_path = temp_directories["edited"] / output_name
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.touch()
-        return str(output_path)
+        return EditResultDTO(
+            path=str(output_path),
+            image=Mock(
+                id="mock-id",
+                filename=output_name,
+                format="JPEG",
+                mode="RGB",
+                width=100,
+                height=100,
+                size_bytes=0,
+                path=str(output_path),
+                folder="edited",
+                url=None,
+            ),
+        )
     
     mock.resize_image.side_effect = lambda img_name, w, h: edit_side_effect(img_name)
     mock.rotate_image.side_effect = lambda img_name, *args, **kwargs: edit_side_effect(img_name)

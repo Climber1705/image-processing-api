@@ -109,6 +109,12 @@ class ImageRepository:
             )
         )
 
+    def get_or_create_image_id(self, display_filename: str, folder: str) -> str:
+        record = self.get_by_filename(display_filename, folder)
+        if record is not None:
+            return record.id
+        return str(uuid.uuid4())
+
     def get_by_content_hash(self, content_hash: str, folder: str) -> ImageRecord | None:
         return self.session.scalar(
             select(ImageRecord).where(

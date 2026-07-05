@@ -4,7 +4,7 @@ from app.core.config import Settings, get_settings
 from app.dependencies.repositories import get_image_repository
 from app.dependencies.storage import get_local_image_storage
 from app.media.repository import ImageRepository
-from app.editing.image_editor import ImageEditService
+from app.editing.service import ImageEditService
 from app.media.service import ImageService
 from app.vision.detection_service import ObjectDetectionService
 from app.vision.inference.engine import InferenceEngine
