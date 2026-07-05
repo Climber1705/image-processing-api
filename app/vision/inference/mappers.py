@@ -35,7 +35,6 @@ def to_detection_result(
 
 def to_detect_response_dto(
     result: DetectionResult,
-    *,
     image_path: str | None = None,
     annotated_image_base64: str | None = None,
 ) -> DetectResponseDTO:
