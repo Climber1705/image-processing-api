@@ -1,42 +1,95 @@
-# 🖼️ Image Processing API
+# Image Processing API
 
-A **FastAPI**-powered RESTful service designed for efficient image management, processing, and object detection. Ideal for handling image uploads, applying transformations, and detecting objects in images.
+FastAPI service for uploading and managing images, applying Pillow-based transformations, and running object detection with a pretrained DETR model.
 
-## ✨ Key Features
+## Key features
 
-- **🗂️ Image Management**  
-  - Upload, retrieve, list, and delete images  
-  - Store and manage images in a scalable way
+- **Structured HTTP API** — Routes, Pydantic schemas, and OpenAPI docs at `/docs` (`app/main.py`, `app/schemas/`).
+- **Layered request handling** — Routes delegate to managers, which coordinate services for CRUD, editing, and detection (`app/managers/`, `app/services/`).
+- **Image lifecycle management** — Upload, list (with pagination), metadata lookup, move, delete, and bulk clear across `uploaded`, `edited`, and `detected` folders (`app/api/routes/image_routes.py`, `app/services/image/crud_operations.py`).
+- **Pillow editing pipeline** — Resize, rotate, grayscale, blur, sharpen, brightness, and contrast operations via a shared `_process_image` helper (`app/services/image/image_editor.py`).
+- **DETR object detection** — Runs `facebook/detr-resnet-50` through Hugging Face Transformers; returns bounding-box metadata and optional annotated images at confidence ≥ 0.5 (`app/services/detection/detection_service.py`).
+- **Non-blocking route handlers** — CPU-bound and I/O work runs in thread pools via `asyncio.to_thread()` so the event loop stays free (`app/api/routes/`).
+- **Containerized deployment** — Multi-stage Dockerfile runs the test suite at build time (80% coverage gate), strips dev dependencies, and exposes a `/health` endpoint for orchestration (`Dockerfile`, `docker-compose.yml`).
 
-- **🛠️ Image Processing**  
-  - Apply various image filters (e.g., grayscale, sepia)  
-  - Resize, rotate with expanding  
-  - Adjust brightness, contrast, and other image properties  
-  - Validate uploaded images for format and integrity
+## Architecture
 
-- **🔍 Object Detection**  
-  - Detect objects within images using bounding boxes  
-  - Return confidence scores for each detected object
+The codebase follows a four-layer layout: API routes → managers → services → core/utils. Routes validate input and map HTTP concerns; managers orchestrate multi-step workflows; services hold domain logic (storage, editing, inference); core provides config, logging, and shared dependencies.
 
-- **🧹 Cleanup and Maintenance**  
-  - Automatically clean up `__pycache__` folders when the API is shut down
+Images live on the local filesystem under `app/static/{uploaded,edited,detected}/`. Storage is accessed through a `BaseImageStorage` abstract class with a `LocalImageStorage` implementation, leaving a seam for a different backend later without rewriting managers.
 
----
+```mermaid
+flowchart LR
+  Client --> Routes
+  Routes --> Managers
+  Managers --> Services
+  Services --> LocalFS["Local filesystem"]
+  Services --> DETR["DETR model\n(Hugging Face)"]
+  Routes --> Core["Config / logging"]
+```
 
-## 🚀 5-Minute Quickstart
+## Technical highlights
 
-### Get Started with Docker (Recommended)
+### System design
+- FastAPI dependency injection wires validators, storage, CRUD, editors, and detection services into route handlers (`app/core/dependencies.py`, `app/core/config.py`).
+- Per-endpoint rate-limit strings are declared with slowapi decorators (e.g. `10/minute` on upload, `5/minute` on detection) (`app/core/rate_limiting.py`, route modules).
+- File logging to `logs/app.log` with module-level loggers (`app/core/logging_config.py`).
+
+### ML & data
+- Object detection uses `DetrImageProcessor` and `DetrForObjectDetection` from Transformers; post-processing applies a 0.5 confidence threshold (`app/services/detection/detection_service.py`).
+- Annotated outputs use luminance-aware label colors and random box colors drawn with Pillow (`detection_service.py`).
+
+### DevOps
+- Docker Compose configs for dev (bind mounts, hot reload) and prod (named volumes, restart policy) (`docker-compose.dev.yml`, `docker-compose.yml`).
+- Dockerfile healthcheck hits `/health`; production compose mirrors the same check.
+
+### Testing
+- 15 test modules with unit and integration coverage; pytest configured for 80% minimum coverage (`tests/`, `pytest.ini`, `.coveragerc`).
+- Integration tests use dependency overrides and mocked detection to avoid loading PyTorch in CI-like runs (`tests/conftest.py`).
+
+## Engineering trade-offs
+
+| Decision | Chosen | Alternatives considered | Rationale |
+|---|---|---|---|
+| Storage | Local filesystem + abstract interface | Cloud object storage (S3, etc.) | Keeps deployment self-contained; `BaseImageStorage` preserves a migration path (`app/services/image/storage/`). |
+| Detection model | Pretrained DETR (`facebook/detr-resnet-50`) | Custom training / lighter detectors | Zero training infra; COCO-pretrained weights cover general object classes out of the box. |
+| Concurrency model | Async routes + `asyncio.to_thread()` | Fully synchronous handlers | Lets FastAPI accept concurrent requests while Pillow and PyTorch run off the event loop. |
+| Model loading | Initialized in `ObjectDetectionService.__init__` | Lazy load on first inference call | Simpler construction path; first request after startup pays download + load cost. Hugging Face caches weights on disk after the initial fetch. |
+
+## Tech stack
+
+Python 3.12 · FastAPI · Uvicorn · Pydantic / pydantic-settings · Pillow · PyTorch · Hugging Face Transformers · slowapi · pytest · Docker / Docker Compose
+
+## Quick start
+
+### Docker (recommended)
+
+Development with hot reload:
 
 ```bash
 docker-compose -f docker-compose.dev.yml up --build
 ```
 
-Access the API at [http://localhost:8000](http://localhost:8000)  
-Interactive API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+Production-style run:
 
-### Try It Out
+```bash
+docker-compose -f docker-compose.yml up --build -d
+```
+
+API: [http://localhost:8000](http://localhost:8000) · Interactive docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### Manual setup
+
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env-example .env
+uvicorn app.main:app --reload
+```
 
 Upload an image:
+
 ```bash
 curl -X POST "http://localhost:8000/images/upload" \
   -F "file=@photo.jpg" \
@@ -44,135 +97,18 @@ curl -X POST "http://localhost:8000/images/upload" \
   -F "format=JPEG"
 ```
 
-For more examples and detailed setup, see the [Quick Start Guide](docs/QUICKSTART.md).
-
----
-
-## 📋 Prerequisites
-
-- **Python 3.12+** (for manual setup)
-- **Docker & Docker Compose** (for Docker setup)
-- **Internet Connection** (for initial model download)
-- **Disk Space**: ~3-4GB minimum
-- **Memory**: 4GB RAM minimum, 8GB+ recommended
-
-For detailed system requirements, see the [Installation Guide](docs/INSTALLATION.md).
-
----
-
-## ⚡ Quick Installation
-
-### Docker (Recommended)
-
-**Development:**
-```bash
-docker-compose -f docker-compose.dev.yml up --build
-```
-
-**Production:**
-```bash
-docker-compose -f docker-compose.yml up --build -d
-```
-
-### Manual Setup
-
-```bash
-git clone https://github.com/thomas-trotter/image-processing-api.git
-cd image-processing-api
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cp .env-example .env
-uvicorn app.main:app --reload
-```
-
-For detailed installation instructions, see the [Installation Guide](docs/INSTALLATION.md).
-
----
-
-## 📚 Documentation
-
-Comprehensive documentation is available in the [`docs/`](docs/README.md) directory:
-
-- **[Quick Start Guide](docs/QUICKSTART.md)** - Get running in minutes
-- **[Installation Guide](docs/INSTALLATION.md)** - Detailed setup and configuration
-- **[API Documentation](docs/API.md)** - Complete API reference
-- **[Architecture Overview](docs/ARCHITECTURE.md)** - System design and DETR model details
-- **[Development Guide](docs/DEVELOPMENT.md)** - Testing and development guidelines
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment best practices
-- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
-
----
-
-## 📂 Repository Structure
-
-```
-image-processing-api/
-│
-├── app/
-│   ├── api/              # API routes and endpoints
-│   ├── core/             # Configuration and infrastructure
-│   ├── managers/         # Business logic coordination
-│   ├── schemas/          # Request/response models
-│   ├── services/         # Core business logic
-│   └── utils/            # Utility functions
-│
-├── docs/                 # Documentation
-├── tests/                # Test suite
-├── logs/                 # Application logs
-│
-├── docker-compose.yml    # Production Docker config
-├── docker-compose.dev.yml # Development Docker config
-├── Dockerfile            # Docker image definition
-├── requirements.txt      # Python dependencies
-└── README.md            # This file
-```
-
-For detailed structure, see the [Architecture Overview](docs/ARCHITECTURE.md).
-
----
-
-## 📖 Module Documentation
-
-For detailed documentation on specific modules:
-
-- [Core Module](app/core/README.md) - Configuration and infrastructure
-- [API Routes](app/api/README.md) - Endpoint definitions
-- [Managers](app/managers/README.md) - Business logic coordination
-- [Services](app/services/README.md) - Core business logic
-  - [Image Services](app/services/image/README.md) - Image processing services
-  - [Detection Services](app/services/detection/README.md) - Object detection services
-- [Schemas](app/schemas/README.md) - Request/response models
-- [Utils](app/utils/README.md) - Utility functions
-
----
-
-## 🧪 Testing
-
-Run the test suite:
+Run tests:
 
 ```bash
 pytest
 ```
 
-Run with coverage:
-```bash
-pytest --cov=app --cov-report=html
-```
+Further setup, API reference, and deployment notes: [`docs/`](docs/README.md).
 
-For detailed testing instructions, see the [Development Guide](docs/DEVELOPMENT.md).
+## What makes this project non-trivial
 
----
+This is a single-process FastAPI application, not a distributed system — but it goes beyond a tutorial CRUD demo in several ways. The codebase separates routes, managers, and services with dependency injection across ~15 modules, integrates a real transformer-based detector (PyTorch + Transformers), and wraps synchronous image/ML work for async concurrency. The Docker build bakes in a coverage-gated test run before shipping a slim runtime image. Documentation spans architecture, API, deployment, and per-module READMEs under `app/`.
 
-## 📄 License
+## License
 
-This project is licensed under the terms of the [GNU License](https://github.com/thomas-trotter/image-processing-api/blob/main/LICENSE).
-
----
-
-## 🔗 Quick Links
-
-- **API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs) (when running)
-- **Documentation**: [docs/README.md](docs/README.md)
-- **Quick Start**: [docs/QUICKSTART.md](docs/QUICKSTART.md)
-- **Troubleshooting**: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+[GNU License](LICENSE)
