@@ -1,35 +1,29 @@
-from fastapi import UploadFile, HTTPException, Depends, status
-from PIL import Image, UnidentifiedImageError
-from typing import Optional, Annotated
-from pathlib import Path
-import uuid
 import os
+import uuid
+from pathlib import Path
+from fastapi import UploadFile, HTTPException, status
+from PIL import Image, UnidentifiedImageError
 
 from app.core.logging_config import get_logger
 from app.services.image.storage.base_storage import BaseImageStorage
-from app.utils.file_operations.directory_utils import DirectoryManager, get_directory_manager
-from app.utils.validator.simple_validator import SimpleImageValidator, get_simple_image_validator
-from app.utils.file_operations.file_utils import FilePathResolver, get_file_path_resolver
+from app.utils.file_operations.directory_utils import DirectoryManager
+from app.utils.validator.simple_validator import SimpleImageValidator
+from app.utils.file_operations.file_utils import FilePathResolver
 
 logger = get_logger("local_storage")
-
-DirectoryManagerDep = Annotated[DirectoryManager, Depends(get_directory_manager)]
-SimpleImageValidatorDep = Annotated[SimpleImageValidator, Depends(get_simple_image_validator)]
-FilePathResolverDep = Annotated[FilePathResolver, Depends(get_file_path_resolver)]
-
 
 class LocalImageStorage(BaseImageStorage):
     def __init__(
         self,
-        directory_manager: DirectoryManagerDep,
-        image_validator: SimpleImageValidatorDep,
-        file_resolver: FilePathResolverDep,
+        directory_manager: DirectoryManager,
+        image_validator: SimpleImageValidator,
+        file_resolver: FilePathResolver,
     ):
         self.directory_manager = directory_manager
         self.image_verifier = image_validator
         self.file_resolver = file_resolver
 
-    def _get_file_name(self, filename: Optional[str], format: str = "JPEG") -> str:
+    def _get_file_name(self, filename: str | None, format: str = "JPEG") -> str:
         format = self.image_verifier.validate_format(format)
         ext = self.image_verifier.get_extension(format)
 
@@ -42,8 +36,8 @@ class LocalImageStorage(BaseImageStorage):
     def save(
         self,
         file: UploadFile,
-        folder: Optional[str] = "uploaded",
-        filename: Optional[str] = None,
+        folder: str | None = "uploaded",
+        filename: str | None = None,
         format: str = "JPEG",
     ) -> str:
         filename = self._get_file_name(filename, format)
@@ -85,15 +79,3 @@ class LocalImageStorage(BaseImageStorage):
         except Exception as e:
             logger.error(f"Error deleting file {file_path}: {e}")
             return False
-
-
-def get_local_image_storage(
-    directory_manager: DirectoryManagerDep,
-    image_validator: SimpleImageValidatorDep,
-    file_resolver: FilePathResolverDep,
-) -> LocalImageStorage:
-    return LocalImageStorage(
-        directory_manager=directory_manager,
-        image_validator=image_validator,
-        file_resolver=file_resolver,
-    )
