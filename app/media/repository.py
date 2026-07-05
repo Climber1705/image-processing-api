@@ -47,7 +47,7 @@ class ImageRepository:
             self.session.rollback()
             raise ImageCreationError("Failed to create image record") from exc
 
-    def upsert_record(
+    def upsert(
         self,
         path: str | Path,
         folder: str,
@@ -91,7 +91,7 @@ class ImageRepository:
 
     def create_from_path(self, path: str | Path, folder: str) -> ImageDTO:
         path = Path(path)
-        return self.upsert_record(
+        return self.upsert(
             path=path,
             folder=folder,
             display_filename=path.name,
