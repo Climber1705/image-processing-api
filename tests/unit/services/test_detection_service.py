@@ -15,9 +15,12 @@ class TestObjectDetectionService:
     """Test cases for ObjectDetectionService."""
 
     @pytest.fixture
-    def detection_service(self, temp_directories, mock_local_storage, mock_detr_model):
+    def detection_service(self, mock_local_storage, mock_inference_engine):
         """Create ObjectDetectionService with mocked dependencies."""
-        return ObjectDetectionService(local_storage=mock_local_storage)
+        return ObjectDetectionService(
+            inference_engine=mock_inference_engine,
+            local_storage=mock_local_storage,
+        )
 
     def test_get_random_colour(self, detection_service):
         """Test random color generation."""
