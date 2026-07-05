@@ -47,6 +47,8 @@ async def bounding_boxes(
         message="Bounding boxes drawn successfully",
         image_path=data["image_with_boxes"],
         detections=[DetectionBox(**d) for d in data["detections"]],
+        model_name=data["model_name"],
+        model_version=data.get("model_version"),
     )
 
 
@@ -66,7 +68,7 @@ async def detected_objects(
 
     try:
         logger.info(f"Retrieving detected objects for image: {image_name}")
-        detected = await asyncio.to_thread(manager.get_detected_objects_summary, image_path)
+        summary = await asyncio.to_thread(manager.get_detected_objects_summary, image_path)
     except RuntimeError as e:
         logger.error(f"Error retrieving detected objects for image: {image_name}, Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error retrieving detected objects: {str(e)}")
@@ -78,5 +80,7 @@ async def detected_objects(
 
     return DetectedObjectsResponse(
         message="Detected objects retrieved successfully",
-        detected_objects=detected,
+        detected_objects=[DetectionBox(**d) for d in summary["detections"]],
+        model_name=summary["model_name"],
+        model_version=summary.get("model_version"),
     )
