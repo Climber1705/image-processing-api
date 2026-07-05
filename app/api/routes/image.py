@@ -47,22 +47,14 @@ async def create_image(
     image_service: ImageService = Depends(get_image_service),
 ):
     """Upload an image file with optional custom filename and output format."""
-    try:
-        await asyncio.to_thread(validate_upload, file)
-        result = await asyncio.to_thread(
-            image_service.upload_image,
-            file,
-            form.filename,
-            form.format,
-        )
-        return to_upload_response(result)
-    except MediaDomainError:
-        raise
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Error uploading image %s: %s", file.filename, e)
-        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+    await asyncio.to_thread(validate_upload, file)
+    result = await asyncio.to_thread(
+        image_service.upload_image,
+        file,
+        form.filename,
+        form.format,
+    )
+    return to_upload_response(result)
 
 
 @router.get("", response_model=list[ImageListItem])
@@ -74,7 +66,10 @@ async def get_images(
 ):
     """List images with optional folder filter and pagination."""
     images = await asyncio.to_thread(
-        image_service.get_images, query.folder, query.limit, query.offset
+        image_service.get_images,
+        query.folder,
+        query.limit,
+        query.offset,
     )
     return [to_list_item(image) for image in images]
 
@@ -87,7 +82,10 @@ async def delete_images(
     image_service: ImageService = Depends(get_image_service),
 ):
     """Delete all images in a folder. Irreversible."""
-    result = await asyncio.to_thread(image_service.delete_images, query.folder)
+    result = await asyncio.to_thread(
+        image_service.delete_images,
+        query.folder,
+    )
     return to_status_response(result)
 
 
@@ -100,7 +98,11 @@ async def get_image(
     image_service: ImageService = Depends(get_image_service),
 ):
     """Get metadata for a single image."""
-    image = await asyncio.to_thread(image_service.get_image_by_filename, filename, query.folder)
+    image = await asyncio.to_thread(
+        image_service.get_image_by_filename,
+        filename,
+        query.folder,
+    )
     return to_detail_response(image)
 
 
@@ -113,13 +115,17 @@ async def delete_image(
     image_service: ImageService = Depends(get_image_service),
 ):
     """Delete a single image by name."""
-    result = await asyncio.to_thread(image_service.delete_image, filename, query.folder)
+    result = await asyncio.to_thread(
+        image_service.delete_image,
+        filename,
+        query.folder,
+    )
     return to_delete_status_response(result)
 
 
 @router.patch("/{filename}", response_model=ImageDetailResponse)
 @limiter.limit("20/minute")
-async def update_image(
+async def move_image(
     request: Request,
     filename: str,
     move_params: MoveImageRequest,
@@ -127,6 +133,9 @@ async def update_image(
 ):
     """Move an image between storage folders."""
     image = await asyncio.to_thread(
-        image_service.move_image, filename, move_params.source_folder, move_params.target_folder
+        image_service.move_image,
+        filename,
+        move_params.source_folder,
+        move_params.target_folder,
     )
     return to_detail_response(image)
