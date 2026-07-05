@@ -23,15 +23,15 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.core.dependencies import get_directories
-from app.utils.file_operations.directory_utils import DirectoryManager
-from app.utils.file_operations.file_utils import FilePathResolver
-from app.utils.validator.simple_validator import SimpleImageValidator
-from app.storage.local_storage import LocalImageStorage
-from app.services.image.crud_operations import ImageCRUDService
-from app.services.image.metadata_handler import ImageMetadataExtractor
-from app.services.image.image_editor import ImageEditService
-from app.services.image.image_service import ImageService
-from app.services.detection.detection_service import ObjectDetectionService
+from app.media.utils.directory_utils import DirectoryManager
+from app.media.utils.file_utils import FilePathResolver
+from app.media.utils.validator.simple_validator import SimpleImageValidator
+from app.media.storage.local_storage import LocalImageStorage
+from app.media.crud_operations import ImageCRUDService
+from app.media.metadata_handler import ImageMetadataExtractor
+from app.editing.image_editor import ImageEditService
+from app.media.image_service import ImageService
+from app.vision.detection_service import ObjectDetectionService
 from app.dependencies.utils import (
     get_directory_manager,
     get_file_path_resolver,
@@ -404,7 +404,7 @@ def mock_detection_service(temp_directories: Dict[str, Path]) -> Mock:
         "model_name": "facebook/detr-resnet-50",
         "model_version": None,
     }
-    from app.services.inference.engine import EngineMetadata
+    from app.vision.inference.engine import EngineMetadata
 
     mock.engine = Mock()
     mock.engine.metadata = EngineMetadata(
@@ -505,7 +505,7 @@ def mock_image_service(
 @pytest.fixture
 def mock_inference_engine(mock_detr_model):
     """Create a mock InferenceEngine backed by mocked DETR components."""
-    from app.services.inference.engine import EngineMetadata, InferenceEngine
+    from app.vision.inference.engine import EngineMetadata, InferenceEngine
 
     engine = Mock(spec=InferenceEngine)
     engine.processor = mock_detr_model["processor"]
@@ -601,8 +601,8 @@ def test_client_with_overrides(
 @pytest.fixture
 def mock_detr_model():
     """Mock the DETR model to avoid loading actual model in tests."""
-    with patch("app.services.inference.engine.DetrImageProcessor") as mock_processor, \
-         patch("app.services.inference.engine.DetrForObjectDetection") as mock_model:
+    with patch("app.vision.inference.engine.DetrImageProcessor") as mock_processor, \
+         patch("app.vision.inference.engine.DetrForObjectDetection") as mock_model:
         
         # Mock processor
         mock_processor_instance = Mock()

@@ -2,9 +2,9 @@ from typing import Any
 from pathlib import Path
 from fastapi import UploadFile, HTTPException
 
-from app.storage.local_storage import LocalImageStorage
-from app.services.image.crud_operations import ImageCRUDService
-from app.services.image.metadata_handler import ImageMetadataExtractor
+from app.media.storage.local_storage import LocalImageStorage
+from app.media.crud_operations import ImageCRUDService
+from app.media.metadata_handler import ImageMetadataExtractor
 from app.core.logging_config import get_logger
 
 logger = get_logger("image_service")

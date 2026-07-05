@@ -5,7 +5,7 @@ from typing import Dict, Callable, Any, Optional
 from PIL import Image, ImageOps, ImageFilter, ImageEnhance
 
 from app.core.logging_config import get_logger
-from app.services.image.crud_operations import ImageCRUDService
+from app.media.crud_operations import ImageCRUDService
 
 logger = get_logger("image_editor")
 

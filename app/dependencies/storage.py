@@ -1,10 +1,10 @@
 from fastapi import Depends
 
 from app.dependencies.utils import get_directory_manager, get_simple_image_validator, get_file_path_resolver
-from app.storage.local_storage import LocalImageStorage
-from app.utils.file_operations.directory_utils import DirectoryManager
-from app.utils.validator.simple_validator import SimpleImageValidator
-from app.utils.file_operations.file_utils import FilePathResolver
+from app.media.storage.local_storage import LocalImageStorage
+from app.media.utils.directory_utils import DirectoryManager
+from app.media.utils.validator.simple_validator import SimpleImageValidator
+from app.media.utils.file_utils import FilePathResolver
 
 def get_local_image_storage(
     directory_manager: DirectoryManager = Depends(get_directory_manager),

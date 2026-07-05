@@ -5,10 +5,10 @@ from fastapi import UploadFile, HTTPException, status
 from PIL import Image, UnidentifiedImageError
 
 from app.core.logging_config import get_logger
-from app.storage.base_storage import BaseImageStorage
-from app.utils.file_operations.directory_utils import DirectoryManager
-from app.utils.validator.simple_validator import SimpleImageValidator
-from app.utils.file_operations.file_utils import FilePathResolver
+from app.media.storage.base_storage import BaseImageStorage
+from app.media.utils.directory_utils import DirectoryManager
+from app.media.utils.validator.simple_validator import SimpleImageValidator
+from app.media.utils.file_utils import FilePathResolver
 
 logger = get_logger("local_storage")
 

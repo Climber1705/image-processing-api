@@ -6,8 +6,8 @@ from app.core.logging_config import get_logger
 from app.dependencies.services import get_image_service
 from app.dependencies.utils import get_simple_image_validator
 from app.schemas.image.image_requests import MoveImageRequest
-from app.services.image.image_service import ImageService
-from app.utils.validator.simple_validator import SimpleImageValidator
+from app.media.image_service import ImageService
+from app.media.utils.validator.simple_validator import SimpleImageValidator
 from app.schemas.image.image_responses import (
     ImageDetailResponse,
     ImageDimensionsResponse,

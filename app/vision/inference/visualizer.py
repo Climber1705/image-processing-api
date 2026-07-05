@@ -3,7 +3,7 @@ from random import randint
 from PIL import Image, ImageDraw, ImageFont
 
 from app.core.logging_config import get_logger
-from app.services.inference.schemas import Detection
+from app.vision.inference.schemas import Detection
 
 logger = get_logger("visualizer")
 

@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import Mock
 from PIL import Image
 
-from app.services.image.image_editor import ImageEditService
+from app.editing.image_editor import ImageEditService
 
 
 @pytest.mark.unit

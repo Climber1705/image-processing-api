@@ -1,6 +1,6 @@
 import torch
 
-from app.services.inference.schemas import Detection
+from app.vision.inference.schemas import Detection
 
 
 def postprocess(

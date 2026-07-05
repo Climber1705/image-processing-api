@@ -4,15 +4,15 @@ from pathlib import Path
 from app.core.dependencies import get_directories
 from app.dependencies.utils import get_directory_manager, get_file_path_resolver
 from app.dependencies.storage import get_local_image_storage
-from app.services.image.image_editor import ImageEditService
-from app.services.image.metadata_handler import ImageMetadataExtractor
-from app.services.image.crud_operations import ImageCRUDService
-from app.services.image.image_service import ImageService
-from app.services.detection.detection_service import ObjectDetectionService
-from app.services.inference.engine import InferenceEngine
-from app.storage.local_storage import LocalImageStorage
-from app.utils.file_operations.directory_utils import DirectoryManager
-from app.utils.file_operations.file_utils import FilePathResolver
+from app.editing.image_editor import ImageEditService
+from app.media.metadata_handler import ImageMetadataExtractor
+from app.media.crud_operations import ImageCRUDService
+from app.media.image_service import ImageService
+from app.vision.detection_service import ObjectDetectionService
+from app.vision.inference.engine import InferenceEngine
+from app.media.storage.local_storage import LocalImageStorage
+from app.media.utils.directory_utils import DirectoryManager
+from app.media.utils.file_utils import FilePathResolver
 
 def get_image_metadata_extractor() -> ImageMetadataExtractor:
     return ImageMetadataExtractor()

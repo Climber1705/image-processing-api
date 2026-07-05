@@ -7,11 +7,11 @@ from PIL import Image
 from typing import Any
 
 from app.core.config import settings
-from app.storage.local_storage import LocalImageStorage
-from app.services.inference.engine import InferenceEngine
-from app.services.inference.preprocessor import load_image
-from app.services.inference.schemas import DetectionResult
-from app.services.inference.visualizer import draw_bounding_boxes
+from app.media.storage.local_storage import LocalImageStorage
+from app.vision.inference.engine import InferenceEngine
+from app.vision.inference.preprocessor import load_image
+from app.vision.inference.schemas import DetectionResult
+from app.vision.inference.visualizer import draw_bounding_boxes
 from app.core.logging_config import get_logger
 
 

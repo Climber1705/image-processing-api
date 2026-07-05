@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.core.logging_config import get_logger
-from app.services.inference.engine import InferenceEngine
+from app.vision.inference.engine import InferenceEngine
 
 logger = get_logger("lifespan")
 

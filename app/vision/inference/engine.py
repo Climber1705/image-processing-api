@@ -7,9 +7,9 @@ from transformers import DetrForObjectDetection, DetrImageProcessor
 
 from app.core.config import Settings
 from app.core.logging_config import get_logger
-from app.services.inference.postprocessor import postprocess
-from app.services.inference.preprocessor import preprocess
-from app.services.inference.schemas import DetectionResult
+from app.vision.inference.postprocessor import postprocess
+from app.vision.inference.preprocessor import preprocess
+from app.vision.inference.schemas import DetectionResult
 
 logger = get_logger("inference_engine")
 

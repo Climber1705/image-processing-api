@@ -6,8 +6,8 @@ import pytest
 from unittest.mock import Mock, patch
 from PIL import Image
 
-from app.services.detection.detection_service import ObjectDetectionService
-from app.services.inference.schemas import Detection, DetectionResult
+from app.vision.detection_service import ObjectDetectionService
+from app.vision.inference.schemas import Detection, DetectionResult
 
 
 @pytest.mark.unit

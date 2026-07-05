@@ -6,7 +6,7 @@ import pytest
 from PIL import Image
 from unittest.mock import Mock
 
-from app.services.inference.preprocessor import load_image, preprocess, resize_if_needed
+from app.vision.inference.preprocessor import load_image, preprocess, resize_if_needed
 
 
 @pytest.mark.unit

@@ -5,7 +5,7 @@ Unit tests for FilePathResolver utility.
 import pytest
 from fastapi import HTTPException
 
-from app.utils.file_operations.file_utils import FilePathResolver
+from app.media.utils.file_utils import FilePathResolver
 
 
 @pytest.mark.unit

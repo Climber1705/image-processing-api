@@ -8,7 +8,7 @@ from PIL import Image
 import torch
 
 from app.core.config import settings
-from app.services.inference.engine import EngineMetadata, InferenceEngine
+from app.vision.inference.engine import EngineMetadata, InferenceEngine
 from app.dependencies.services import get_object_detection_service
 
 
@@ -25,9 +25,9 @@ class TestInferenceEngine:
 
     def test_from_settings_loads_model_once(self, mock_detr_model):
         with patch(
-            "app.services.inference.engine.DetrImageProcessor.from_pretrained"
+            "app.vision.inference.engine.DetrImageProcessor.from_pretrained"
         ) as load_processor, patch(
-            "app.services.inference.engine.DetrForObjectDetection.from_pretrained"
+            "app.vision.inference.engine.DetrForObjectDetection.from_pretrained"
         ) as load_model:
             load_processor.return_value = mock_detr_model["processor"]
             load_model.return_value = mock_detr_model["model"]

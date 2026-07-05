@@ -3,9 +3,9 @@ from typing import Any
 from pathlib import Path
 from fastapi import HTTPException
 
-from app.utils.file_operations.directory_utils import DirectoryManager
-from app.utils.file_operations.file_utils import FilePathResolver
-from app.services.image.metadata_handler import ImageMetadataExtractor
+from app.media.utils.directory_utils import DirectoryManager
+from app.media.utils.file_utils import FilePathResolver
+from app.media.metadata_handler import ImageMetadataExtractor
 from app.core.logging_config import get_logger
 from app.schemas.image.image_responses import ImageListItem
 
