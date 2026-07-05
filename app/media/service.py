@@ -1,6 +1,5 @@
 import uuid
 from pathlib import Path
-
 from fastapi import UploadFile
 
 from app.core.config import Settings
@@ -72,14 +71,17 @@ class ImageService:
         )
 
         try:
-            image = self.repository.create_upload_record(
+            image = self.repository.create(
                 image_id=image_id,
                 path=saved_path,
                 folder=ImageFolder.UPLOADED,
                 display_filename=display_filename,
                 content_hash=content_hash,
             )
-            return SaveImageResultDTO(path=saved_path, image=image)
+            return SaveImageResultDTO(
+                path=saved_path,
+                image=image,
+            )
         except ImageCreationError:
             self.storage.delete(saved_path)
             existing_record = self.repository.get_by_content_hash(content_hash, ImageFolder.UPLOADED)
@@ -89,7 +91,10 @@ class ImageService:
                     extra={"content_hash": content_hash},
                 )
                 existing_image = record_to_dto(existing_record)
-                return SaveImageResultDTO(path=existing_image.path, image=existing_image)
+                return SaveImageResultDTO(
+                    path=existing_image.path,
+                    image=existing_image,
+                )
             raise ImageSaveError("Failed to save image") from None
         except Exception as exc:
             self.storage.delete(saved_path)
@@ -124,7 +129,7 @@ class ImageService:
         limit: int = 100,
         offset: int = 0,
     ) -> list[ImageDTO]:
-        records = self.repository.list_by_folder(
+        records = self.repository.get_by_folder(
             folders=ImageFolder.get_folder_names(folder),
             limit=limit,
             offset=offset,
@@ -138,7 +143,11 @@ class ImageService:
 
         deleted_image = record_to_dto(record)
         if not self.storage.delete(record.path):
-            logger.warning("File missing for %s at %s, removing DB record", filename, record.path)
+            logger.warning(
+                "File missing for %s at %s, removing DB record",
+                filename,
+                record.path,
+            )
             self.repository.delete_by_filename(filename, folder)
             raise ImageNotFoundError(f"Image {filename} not found in {folder} folder")
 
@@ -154,7 +163,7 @@ class ImageService:
         if folder not in FolderFilter.values():
             raise InvalidFolderError(f"Invalid folder: {folder}")
 
-        records = self.repository.list_all_by_folders(ImageFolder.get_folder_names(folder))
+        records = self.repository.get_all_by_folders(ImageFolder.get_folder_names(folder))
         deleted_count = 0
 
         for record in records:
@@ -189,7 +198,7 @@ class ImageService:
 
         try:
             new_path = self.storage.move(record.path, target_folder)
-            updated_image = self.repository.update_location(
+            updated_image = self.repository.update(
                 filename=filename,
                 source_folder=source_folder,
                 target_folder=target_folder,

@@ -3,49 +3,15 @@ Unit tests for image metadata helpers.
 """
 
 import pytest
-from pathlib import Path
-from fastapi import HTTPException
 from PIL import Image
+from fastapi import HTTPException
 
-from app.media.utils.metadata import get_image_dimensions, get_image_metadata
+from app.media.utils.metadata import get_image_metadata
 
 
 @pytest.mark.unit
 class TestImageMetadata:
     """Test cases for metadata extraction functions."""
-
-    def test_get_dimensions_success(self, temp_directories, sample_image_rgb):
-        """Test successful dimension extraction."""
-        image_path = temp_directories["uploaded"] / "test_dimensions.jpg"
-        sample_image_rgb.save(image_path, format="JPEG")
-
-        width, height = get_image_dimensions(image_path)
-
-        assert width == 800
-        assert height == 600
-
-    def test_get_dimensions_different_sizes(self, temp_directories):
-        """Test dimension extraction for different image sizes."""
-        sizes = [(100, 100), (1920, 1080), (50, 200)]
-
-        for width, height in sizes:
-            img = Image.new("RGB", (width, height), color="blue")
-            image_path = temp_directories["uploaded"] / f"test_{width}x{height}.jpg"
-            img.save(image_path, format="JPEG")
-
-            extracted_width, extracted_height = get_image_dimensions(image_path)
-
-            assert extracted_width == width
-            assert extracted_height == height
-
-    def test_get_dimensions_file_not_found(self, temp_directories):
-        """Test dimension extraction with non-existent file."""
-        image_path = temp_directories["uploaded"] / "nonexistent.jpg"
-
-        with pytest.raises(HTTPException) as exc_info:
-            get_image_dimensions(image_path)
-
-        assert exc_info.value.status_code == 404
 
     def test_get_metadata_success(self, temp_directories, sample_image_rgb):
         """Test successful metadata extraction."""

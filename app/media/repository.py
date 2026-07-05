@@ -16,7 +16,7 @@ class ImageRepository:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def create_upload_record(
+    def create(
         self,
         image_id: str,
         path: str | Path,
@@ -124,7 +124,7 @@ class ImageRepository:
             .order_by(ImageRecord.created_at.desc())
         )
 
-    def list_by_folder(
+    def get_by_folder(
         self,
         folders: list[str],
         limit: int = 100,
@@ -139,7 +139,7 @@ class ImageRepository:
         )
         return list(self.session.scalars(statement).all())
 
-    def list_all_by_folders(self, folders: list[str]) -> list[ImageRecord]:
+    def get_all_by_folders(self, folders: list[str]) -> list[ImageRecord]:
         statement = (
             select(ImageRecord)
             .where(ImageRecord.folder.in_(folders))
@@ -161,7 +161,7 @@ class ImageRepository:
         self.session.commit()
         return result.rowcount or 0
 
-    def update_location(
+    def update(
         self,
         filename: str,
         source_folder: str,

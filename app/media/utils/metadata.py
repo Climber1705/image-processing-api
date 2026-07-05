@@ -6,20 +6,6 @@ from fastapi import HTTPException
 
 from app.media.domain.dtos import FileMetadataDTO
 
-
-def get_image_dimensions(image_path: Path) -> tuple[int, int]:
-    try:
-        with Image.open(image_path) as image:
-            return image.width, image.height
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Image not found")
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get image dimensions: {exc}",
-        )
-
-
 def get_image_metadata(image_path: Path) -> FileMetadataDTO:
     try:
         with Image.open(image_path) as image:
