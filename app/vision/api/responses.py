@@ -12,18 +12,21 @@ class InferenceMetadata(BaseModel):
     model_version: str | None = None
 
 
-class BoundingBoxResponse(BaseModel):
+class InferenceDetectResponse(BaseModel):
     message: str
-    image_path: str
     detections: list[DetectionBox]
     model_name: str
     model_version: str | None = None
     detection_count: int = Field(..., ge=0)
 
 
-class DetectedObjectsResponse(BaseModel):
-    message: str
-    detected_objects: list[DetectionBox]
+class InferenceDetectVisualizeResponse(InferenceDetectResponse):
+    image_path: str | None = None
+    annotated_image_base64: str | None = None
+
+
+class ModelInfoResponse(BaseModel):
     model_name: str
     model_version: str | None = None
-    detection_count: int = Field(..., ge=0)
+    is_ready: bool
+    inference_count: int = Field(..., ge=0)

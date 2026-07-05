@@ -4,6 +4,9 @@ class VisionDomainError(Exception):
         super().__init__(message)
 
 
+class InvalidInputError(VisionDomainError): ...
+
+
 class ModelNotReadyError(VisionDomainError): ...
 
 

@@ -37,11 +37,13 @@ class TestEndToEndWorkflows:
         
         assert resize_response.status_code == status.HTTP_200_OK
         
+        img_bytes.seek(0)
         detect_response = test_client_with_overrides.post(
-            "/images/workflow_test.jpg/detections/bounding-boxes"
+            "/v1/inference/detect/visualize?persist=true",
+            files={"file": ("workflow_test.jpg", img_bytes, "image/jpeg")},
         )
-        
-        assert detect_response.status_code in [200, 400, 404, 500]
+
+        assert detect_response.status_code == status.HTTP_200_OK
 
     def test_upload_move_delete_workflow(self, test_client_with_overrides, temp_directories):
         """Test complete workflow: upload -> move -> delete."""

@@ -1,13 +1,15 @@
 from .responses import (
-    BoundingBoxResponse,
-    DetectedObjectsResponse,
     DetectionBox,
+    InferenceDetectResponse,
+    InferenceDetectVisualizeResponse,
     InferenceMetadata,
+    ModelInfoResponse,
 )
 
 __all__ = [
-    "BoundingBoxResponse",
-    "DetectedObjectsResponse",
     "DetectionBox",
+    "InferenceDetectResponse",
+    "InferenceDetectVisualizeResponse",
     "InferenceMetadata",
+    "ModelInfoResponse",
 ]

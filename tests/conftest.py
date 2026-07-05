@@ -27,7 +27,7 @@ from app.storage.local_storage import LocalImageStorage
 from app.media.service import ImageService
 from app.editing.domain.dtos import EditResultDTO
 from app.editing.service import ImageEditService
-from app.vision.domain.dtos import DetectResponseDTO, DetectionsResultDTO, DetectionDTO, InferenceMetadataDTO
+from app.vision.domain.dtos import DetectResponseDTO, DetectionDTO, InferenceMetadataDTO
 from app.vision.service import InferenceService
 from app.dependencies.storage import get_local_image_storage
 from app.dependencies.services import (
@@ -309,10 +309,10 @@ def mock_image_edit_service(temp_directories: Dict[str, Path]) -> Mock:
 
 
 @pytest.fixture
-def mock_detection_service(temp_directories: Dict[str, Path]) -> Mock:
-    """Create a mock InferenceService with mocked DETR model."""
+def mock_inference_service(temp_directories: Dict[str, Path]) -> Mock:
+    """Create a mock InferenceService."""
     mock = Mock(spec=InferenceService)
-    
+
     mock_detections = [
         DetectionDTO(label="person", confidence=0.95, box=[100.0, 100.0, 200.0, 300.0]),
         DetectionDTO(label="car", confidence=0.87, box=[300.0, 150.0, 500.0, 400.0]),
@@ -324,26 +324,32 @@ def mock_detection_service(temp_directories: Dict[str, Path]) -> Mock:
         detections=mock_detections,
         metadata=metadata,
     )
-    objects_result = DetectionsResultDTO(
-        detections=mock_detections,
-        metadata=metadata,
-    )
 
     def _resolve_image_path(filename: str, folder: str = "uploaded") -> Path:
         return temp_directories.get(folder, temp_directories["uploaded"]) / filename
 
-    def detect_for_filename_side_effect(filename: str, folder: str = "uploaded"):
-        if not _resolve_image_path(filename, folder).exists():
-            raise HTTPException(status_code=404, detail=f"Image {filename} not found in {folder}")
-        return detection_result
+    def detect_side_effect(
+        image: bytes,
+        *,
+        visualize: bool = False,
+        persist: bool = False,
+        source_filename: str = "image.jpg",
+    ):
+        folder = "uploaded"
+        if not _resolve_image_path(source_filename, folder).exists():
+            raise HTTPException(status_code=404, detail=f"Image {source_filename} not found in {folder}")
+        if visualize and persist:
+            return detection_result
+        if visualize:
+            return DetectResponseDTO(
+                detections=mock_detections,
+                metadata=metadata,
+                annotated_image_base64="dGVzdA==",
+            )
+        return DetectResponseDTO(detections=mock_detections, metadata=metadata)
 
-    def get_detected_objects_for_filename_side_effect(filename: str, folder: str = "uploaded"):
-        if not _resolve_image_path(filename, folder).exists():
-            raise HTTPException(status_code=404, detail=f"Image {filename} not found in {folder}")
-        return objects_result
-
-    mock.detect_for_filename.side_effect = detect_for_filename_side_effect
-    mock.get_detected_objects_for_filename.side_effect = get_detected_objects_for_filename_side_effect
+    mock.detect.side_effect = detect_side_effect
+    mock.image_service = Mock()
     from app.vision.inference.engine import EngineMetadata
 
     mock.engine = Mock()
@@ -444,7 +450,7 @@ def test_client_with_overrides(
     mock_local_storage: Mock,
     mock_image_edit_service: Mock,
     mock_image_service: Mock,
-    mock_detection_service: Mock,
+    mock_inference_service: Mock,
     mock_inference_engine: Mock,
 ) -> TestClient:
     """Create a FastAPI test client with dependency overrides."""
@@ -458,7 +464,7 @@ def test_client_with_overrides(
         return mock_image_service
 
     def override_get_inference_service():
-        return mock_detection_service
+        return mock_inference_service
 
     app.dependency_overrides[get_local_image_storage] = override_get_local_image_storage
     app.dependency_overrides[get_image_edit_service] = override_get_image_edit_service
@@ -528,6 +534,19 @@ def format_extensions() -> Dict[str, str]:
         "TIFF": ".tiff",
         "WEBP": ".webp"
     }
+
+
+@pytest.fixture
+def test_settings(temp_directories, format_extensions):
+    """Settings scoped to temp directories for unit tests."""
+    from app.core.config import Settings
+
+    return Settings(
+        UPLOADED_FOLDER=temp_directories["uploaded"],
+        EDITED_FOLDER=temp_directories["edited"],
+        DETECTED_FOLDER=temp_directories["detected"],
+        FORMAT_EXTENSIONS=format_extensions,
+    )
 
 
 def pytest_configure(config):

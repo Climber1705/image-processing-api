@@ -6,7 +6,7 @@ from transformers import DetrForObjectDetection, DetrImageProcessor
 
 from app.core.config import Settings
 from app.core.logging_config import get_logger
-from app.vision.inference.mappers import to_detection_result
+from app.vision.inference.mappers import to_detection_dtos, to_detection_result
 from app.vision.inference.postprocessor import postprocess
 from app.vision.inference.preprocessor import preprocess
 from app.vision.inference.schemas import DetectionResult, EngineMetadata
@@ -36,20 +36,20 @@ class InferenceEngine:
 
     @classmethod
     def from_settings(cls, settings: Settings) -> "InferenceEngine":
-        warnings.filterwarnings("ignore", category=UserWarning, module="torch")
-
         model_name = settings.MODEL_NAME
         logger.info("Loading detection model: %s", model_name)
 
-        processor = DetrImageProcessor.from_pretrained(
-            model_name,
-            revision=settings.MODEL_REVISION,
-        )
-        model = DetrForObjectDetection.from_pretrained(
-            model_name,
-            revision=settings.MODEL_REVISION,
-            ignore_mismatched_sizes=True,
-        )
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning, module="torch")
+            processor = DetrImageProcessor.from_pretrained(
+                model_name,
+                revision=settings.MODEL_REVISION,
+            )
+            model = DetrForObjectDetection.from_pretrained(
+                model_name,
+                revision=settings.MODEL_REVISION,
+                ignore_mismatched_sizes=True,
+            )
 
         return cls(
             processor=processor,
@@ -73,6 +73,7 @@ class InferenceEngine:
         logger.info("Inference engine warmup complete")
 
     def mark_ready(self) -> None:
+        """Skip warmup (e.g. in tests) while still reporting readiness."""
         self._warmed_up = True
 
     def predict(self, image: Image.Image, confidence_threshold: float) -> DetectionResult:

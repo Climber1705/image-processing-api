@@ -15,11 +15,6 @@ class TestHealthRoutes:
         assert response.status_code == 200
         assert response.json()["status"] == "healthy"
 
-    def test_health_legacy_alias(self, test_client):
-        response = test_client.get("/health")
-        assert response.status_code == 200
-        assert response.json()["status"] == "healthy"
-
     def test_health_ready_when_engine_ready(self, test_client, mock_inference_engine):
         mock_inference_engine.is_ready = True
         mock_inference_engine.metadata = EngineMetadata(

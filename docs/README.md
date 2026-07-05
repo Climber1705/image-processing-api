@@ -2,56 +2,54 @@
 
 [← Back to Main README](../README.md)
 
-Welcome to the Image Processing API documentation! This directory contains detailed guides and references for all aspects of the project.
+Welcome to the Image Processing API documentation.
 
 ## Documentation Guide
 
 ### Getting Started
 
-- **[Quick Start Guide](QUICKSTART.md)**  
-  Step-by-step guide to get the API running in minutes. Includes Docker and manual setup instructions, plus common first tasks.
+- **[Quick Start Guide](QUICKSTART.md)** — Get the API running in minutes (Docker or manual setup).
 
 ### Setup & Installation
 
-- **[Installation Guide](INSTALLATION.md)**  
-  Comprehensive installation instructions including manual setup, Docker deployment, environment configuration, and system requirements.
-
-- **[Deployment Guide](DEPLOYMENT.md)**  
-  Production deployment best practices, Docker production configuration, health checks, monitoring, and scaling considerations.
+- **[Installation Guide](INSTALLATION.md)** — Environment configuration and system requirements.
+- **[Deployment Guide](DEPLOYMENT.md)** — Production Docker setup, health checks, and monitoring.
 
 ### API Reference
 
-- **[API Documentation](API.md)**  
-  Complete API reference with all endpoints, rate limits, request/response examples, and error codes.
+- **[API Documentation](API.md)** — Endpoints, rate limits, request/response examples.
+- **[ML Serving](ML_SERVING.md)** — Inference pipeline, concurrency, and test tiers.
 
 ### Architecture & Development
 
-- **[Architecture Overview](ARCHITECTURE.md)**  
-  System architecture, module organization, DETR model details, performance characteristics, and design patterns.
-
-- **[Development Guide](DEVELOPMENT.md)**  
-  Testing guidelines, development environment setup, and code structure.
+- **[Architecture Overview](ARCHITECTURE.md)** — Bounded contexts, DETR model, design patterns.
+- **[Development Guide](DEVELOPMENT.md)** — Testing, code structure, conventions.
+- **[ADR 001: Local filesystem storage](adr/001-local-filesystem-storage.md)** — Why local disk was chosen over object storage.
 
 ### Troubleshooting
 
-- **[Troubleshooting Guide](TROUBLESHOOTING.md)**  
-  Common issues, error solutions, performance optimization tips, and FAQ.
+- **[Troubleshooting Guide](TROUBLESHOOTING.md)** — Common issues and FAQ.
 
-## Module Documentation
+## Code Layout
 
-For detailed documentation on specific code modules, see:
+```
+app/
+├── api/routes/       # HTTP endpoints
+├── core/             # Config, lifespan, logging
+├── dependencies/     # FastAPI DI
+├── media/            # Image CRUD bounded context
+├── editing/          # Pillow transforms bounded context
+├── vision/           # ML inference bounded context
+├── storage/          # Filesystem abstraction
+└── validation/       # Upload validation
+```
 
-- [Core Module](../app/core/README.md) - Configuration and infrastructure
-- [API Routes](../app/api/README.md) - Endpoint definitions
-- [Managers](../app/managers/README.md) - Business logic coordination
-- [Services](../app/services/README.md) - Core business logic
-  - [Image Services](../app/services/image/README.md) - Image processing services
-  - [Detection Services](../app/services/detection/README.md) - Object detection services
-- [Schemas](../app/schemas/README.md) - Request/response models
-- [Utils](../app/utils/README.md) - Utility functions
-- [Test Suite](../tests/README.md) - Testing documentation
+Module READMEs:
+
+- [Core Module](../app/core/README.md)
+- [API Routes](../app/api/README.md)
+- [Test Suite](../tests/README.md)
 
 ---
 
 [← Back to Main README](../README.md)
-

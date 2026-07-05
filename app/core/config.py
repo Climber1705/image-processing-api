@@ -1,28 +1,10 @@
-import os
-import logging
-from pathlib import Path
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.media.domain.enums import ImageFolder
-
-LOG_DIR = "logs"
-os.makedirs(LOG_DIR, exist_ok=True)
-
-log_file_path = os.path.join(LOG_DIR, "app.log")
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-file_handler = logging.FileHandler(log_file_path)
-file_handler.setLevel(logging.DEBUG)
-
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s - [%(filename)s:%(lineno)d]")
-file_handler.setFormatter(formatter)
-
-logger.addHandler(file_handler)
 
 
 class Settings(BaseSettings):
@@ -45,12 +27,13 @@ class Settings(BaseSettings):
     INFERENCE_DEVICE: str = "cpu"
     MAX_IMAGE_DIMENSION: int = 1333
     WARMUP_ON_STARTUP: bool = True
+    MAX_CONCURRENT_INFERENCES: int = 2
 
     FORMAT_EXTENSIONS: dict[str, str] = {
         "JPEG": ".jpg",
         "JPG": ".jpg",
         "PNG": ".png",
-        "GIF": ".gif",  
+        "GIF": ".gif",
         "BMP": ".bmp",
         "TIFF": ".tiff",
         "WEBP": ".webp",
@@ -70,9 +53,7 @@ class Settings(BaseSettings):
 
     def setup(self) -> None:
         for path in [self.UPLOADED_FOLDER, self.EDITED_FOLDER, self.DETECTED_FOLDER]:
-            if not path.exists():
-                path.mkdir(parents=True, exist_ok=True)
-                logger.info("Created directory: %s", path)
+            path.mkdir(parents=True, exist_ok=True)
 
         if self.DATABASE_URL.startswith("sqlite:///./"):
             db_path = Path(self.DATABASE_URL.removeprefix("sqlite:///./"))

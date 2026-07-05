@@ -8,6 +8,8 @@ from fastapi import HTTPException, UploadFile
 from PIL import Image
 
 from app.validation.validator import (
+    allowed_mime_types_for_formats,
+    default_allowed_mime_types,
     get_format_extension,
     validate_image_format,
     validate_image_size,
@@ -21,8 +23,28 @@ class TestImageValidation:
     """Test cases for image validation functions."""
 
     @pytest.fixture
-    def allowed_types(self):
-        return ("image/jpeg", "image/png")
+    def allowed_types(self, format_extensions):
+        return allowed_mime_types_for_formats(format_extensions)
+
+    def test_default_allowed_mime_types_match_format_extensions(self, format_extensions):
+        """Upload MIME allowlist covers every configured output format."""
+        mimes = default_allowed_mime_types()
+        expected = allowed_mime_types_for_formats(format_extensions)
+        assert mimes == expected
+        assert "image/webp" in mimes
+        assert "image/gif" in mimes
+
+    def test_validate_webp_upload_success(self, format_extensions):
+        """WEBP uploads are accepted when listed in FORMAT_EXTENSIONS."""
+        webp_file = UploadFile(
+            filename="test.webp",
+            file=BytesIO(b"fake content"),
+            headers={"content-type": "image/webp"},
+        )
+        validate_image_type(
+            webp_file,
+            allowed_mime_types_for_formats(format_extensions),
+        )
 
     def test_validate_upload_success(self, valid_upload_file):
         """Test successful validation."""

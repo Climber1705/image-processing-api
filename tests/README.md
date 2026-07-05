@@ -2,90 +2,65 @@
 
 ## Overview
 
-This directory contains comprehensive unit and integration tests for the Image Processing API, targeting 80%+ code coverage.
+Unit and integration tests for the Image Processing API, targeting 80%+ code coverage.
 
 ## Test Structure
 
 ```
 tests/
 ├── conftest.py              # Shared fixtures and test configuration
-├── unit/                   # Unit tests for individual components
-│   ├── services/          # Service layer tests
-│   ├── managers/          # Manager layer tests
-│   └── utils/             # Utility tests
-└── integration/           # Integration tests for API endpoints
+├── inference/               # Real-model smoke tests (@pytest.mark.inference)
+├── unit/
+│   ├── api/                 # Health route tests
+│   ├── media/               # Media domain tests
+│   ├── services/            # Service layer tests
+│   ├── utils/               # Utility tests
+│   └── vision/              # Vision/inference tests
+└── integration/             # API endpoint integration tests
 ```
 
 ## Running Tests
 
-### Run All Tests
+### Fast tier (CI default — skips slow model-download tests)
+
+```bash
+pytest -m "not inference"
+```
+
+### Run all tests
+
 ```bash
 pytest
 ```
 
-### Run Unit Tests Only
-```bash
-pytest tests/unit
-```
+### Run with coverage
 
-### Run Integration Tests Only
-```bash
-pytest tests/integration
-```
-
-### Run with Coverage Report
 ```bash
 pytest --cov=app --cov-report=html
 ```
 
-The HTML coverage report will be generated in `htmlcov/index.html`.
+### Run slow inference tests (requires model download)
 
-### Run Specific Test File
 ```bash
-pytest tests/unit/services/test_image_editor.py
+pytest -m inference --no-cov
 ```
 
-### Run Tests with Markers
-```bash
-pytest -m unit              # Run only unit tests
-pytest -m integration      # Run only integration tests
-```
+## Test Coverage by Domain
 
-## Test Coverage
+| Domain | Key test files |
+|--------|----------------|
+| Media | `test_service.py`, `test_upload_duplicate.py`, `test_hash.py` |
+| Editing | `test_image_editor.py` |
+| Vision | `test_inference_service.py`, `test_inference_engine.py`, `test_image_loader.py`, `test_mappers.py`, `test_visualizer.py` |
+| Integration | `test_image_routes.py`, `test_editing_routes.py`, `test_inference_routes.py`, `test_end_to_end.py` |
 
-The test suite includes:
+## Fixtures
 
-### Unit Tests
-- **Services**: image_editor, crud_operations, metadata_handler, local_storage, detection_service
-- **Managers**: image_manager, edit_manager, detection_manager
-- **Utils**: file_utils, directory_utils, validators
+Shared fixtures in `conftest.py`:
 
-### Integration Tests
-- **Image Routes**: Upload, list, get details, delete, move, clear all
-- **Editing Routes**: Resize, rotate, grayscale, blur, sharpen, brightness, contrast
-- **Detection Routes**: Bounding boxes, detected objects
-- **End-to-End**: Complete workflows (upload→edit→detect, upload→move→delete)
+- `temp_directories` — isolated upload/edit/detect folders
+- `test_settings` — Settings scoped to temp directories
+- `mock_inference_engine` — mocked DETR engine (avoids model download)
+- `test_client` / `test_client_with_overrides` — FastAPI TestClient variants
 
-## Key Features
-
-- **Isolated Test Environment**: Each test uses temporary directories
-- **Mocked Dependencies**: ML models and external services are mocked
-- **Comprehensive Coverage**: Tests cover success cases, error cases, and edge cases
-- **Fast Execution**: Unit tests run quickly without loading actual ML models
-
-## Dependencies
-
-Test dependencies are listed in `requirements.txt`:
-- pytest
-- pytest-asyncio
-- pytest-cov
-- httpx
-- pytest-mock
-- faker
-
-## Notes
-
-- ML models (DETR) are mocked to avoid loading actual models during testing
-- Test images are created programmatically using PIL
-- All file operations use temporary directories that are cleaned up after tests
-- FastAPI dependency overrides are used for integration tests
+See [ML Serving](../docs/ML_SERVING.md) for inference test tier details.

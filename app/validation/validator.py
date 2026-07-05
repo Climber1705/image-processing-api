@@ -5,14 +5,41 @@ from fastapi import HTTPException, UploadFile, status
 
 logger = logging.getLogger("validator")
 
-DEFAULT_ALLOWED_TYPES = ("image/jpeg", "image/png")
 DEFAULT_MAX_SIZE_MB = 5
+
+# MIME types aligned with Settings.FORMAT_EXTENSIONS (app/core/config.py).
+FORMAT_TO_MIME: dict[str, str] = {
+    "JPEG": "image/jpeg",
+    "JPG": "image/jpeg",
+    "PNG": "image/png",
+    "GIF": "image/gif",
+    "BMP": "image/bmp",
+    "TIFF": "image/tiff",
+    "WEBP": "image/webp",
+}
+
+
+def allowed_mime_types_for_formats(format_extensions: dict[str, str]) -> tuple[str, ...]:
+    mimes = {
+        FORMAT_TO_MIME[fmt]
+        for fmt in format_extensions
+        if fmt in FORMAT_TO_MIME
+    }
+    return tuple(sorted(mimes))
+
+
+def default_allowed_mime_types() -> tuple[str, ...]:
+    from app.core.config import get_settings
+
+    return allowed_mime_types_for_formats(get_settings().format_extensions)
 
 
 def validate_image_type(
     image: UploadFile,
-    allowed_types: tuple[str, ...] = DEFAULT_ALLOWED_TYPES,
+    allowed_types: tuple[str, ...] | None = None,
 ) -> None:
+    if allowed_types is None:
+        allowed_types = default_allowed_mime_types()
     if image.content_type not in allowed_types:
         logger.warning("Unsupported file type: %s", image.content_type)
         raise HTTPException(
@@ -46,8 +73,7 @@ def validate_image_size(
 
 def validate_upload(
     image: UploadFile,
-    *,
-    allowed_types: tuple[str, ...] = DEFAULT_ALLOWED_TYPES,
+    allowed_types: tuple[str, ...] | None = None,
     max_size_mb: int = DEFAULT_MAX_SIZE_MB,
 ) -> None:
     validate_image_type(image, allowed_types)

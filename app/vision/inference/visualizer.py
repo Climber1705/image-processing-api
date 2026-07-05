@@ -3,7 +3,7 @@ from random import randint
 from PIL import Image, ImageDraw, ImageFont
 
 from app.core.logging_config import get_logger
-from app.vision.inference.schemas import Detection
+from app.vision.domain.dtos import DetectionDTO
 
 logger = get_logger("visualizer")
 
@@ -27,7 +27,7 @@ def _text_colour(rgb: tuple[int, int, int]) -> str:
     return "#ffffff" if brightness < 0.5 else "#000000"
 
 
-def draw_bounding_boxes(image: Image.Image, detections: list[Detection]) -> Image.Image:
+def draw_bounding_boxes(image: Image.Image, detections: list[DetectionDTO]) -> Image.Image:
     image_copy = image.copy()
     draw = ImageDraw.Draw(image_copy)
     font = _get_font(16)

@@ -1,16 +1,11 @@
 from dataclasses import dataclass
 
-
-@dataclass(frozen=True, slots=True)
-class Detection:
-    label: str
-    confidence: float
-    box: list[float]
+from app.vision.domain.dtos import DetectionDTO
 
 
 @dataclass(frozen=True, slots=True)
 class DetectionResult:
-    detections: list[Detection]
+    detections: list[DetectionDTO]
     model_name: str
     model_version: str | None
 
