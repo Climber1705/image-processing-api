@@ -23,17 +23,34 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.core.dependencies import get_directories
-from app.utils.file_operations.directory_utils import DirectoryManager, get_directory_manager
-from app.utils.file_operations.file_utils import FilePathResolver, get_file_path_resolver
-from app.utils.validator.simple_validator import SimpleImageValidator, get_simple_image_validator
-from app.services.image.storage.local_storage import LocalImageStorage, get_local_image_storage
-from app.services.image.crud_operations import ImageCRUDService, get_image_crud_service
-from app.services.image.metadata_handler import ImageMetadataExtractor, get_image_metadata_extractor
-from app.services.image.image_editor import ImageEditService, get_image_edit_service
-from app.services.detection.detection_service import ObjectDetectionService, get_object_detection_service
-from app.managers.image_manager import ImageManager, get_image_manager
-from app.managers.edit_manager import EditManager, get_edit_manager
-from app.managers.detection_manager import DetectionManager, get_detection_manager
+from app.utils.file_operations.directory_utils import DirectoryManager
+from app.utils.file_operations.file_utils import FilePathResolver
+from app.utils.validator.simple_validator import SimpleImageValidator
+from app.services.image.storage.local_storage import LocalImageStorage
+from app.services.image.crud_operations import ImageCRUDService
+from app.services.image.metadata_handler import ImageMetadataExtractor
+from app.services.image.image_editor import ImageEditService
+from app.services.detection.detection_service import ObjectDetectionService
+from app.managers.image_manager import ImageManager
+from app.managers.edit_manager import EditManager
+from app.managers.detection_manager import DetectionManager
+from app.dependencies.utils import (
+    get_directory_manager,
+    get_file_path_resolver,
+    get_simple_image_validator,
+)
+from app.dependencies.storage import get_local_image_storage
+from app.dependencies.services import (
+    get_image_crud_service,
+    get_image_metadata_extractor,
+    get_image_edit_service,
+    get_object_detection_service,
+)
+from app.dependencies.managers import (
+    get_image_manager,
+    get_edit_manager,
+    get_detection_manager,
+)
 
 
 @pytest.fixture
