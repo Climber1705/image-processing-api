@@ -6,8 +6,8 @@ import pytest
 from unittest.mock import Mock, patch
 from PIL import Image
 
-from app.services.detection.detection_service import ObjectDetectionService
-from app.services.inference.schemas import Detection, DetectionResult
+from app.vision.detection_service import ObjectDetectionService
+from app.vision.inference.schemas import Detection, DetectionResult
 
 
 @pytest.mark.unit
@@ -33,12 +33,13 @@ class TestObjectDetectionService:
             model_version=None,
         )
 
-    def test_pillow_to_uploadfile(self, detection_service, sample_image_rgb):
-        """Test converting PIL image to UploadFile."""
-        upload_file = detection_service._pillow_to_uploadfile(sample_image_rgb, "test.png")
+    def test_image_to_bytesio(self, detection_service, sample_image_rgb):
+        """Test converting PIL image to BytesIO."""
+        image_bytes = detection_service._image_to_bytesio(sample_image_rgb)
 
-        assert upload_file.filename == "test.png"
-        assert upload_file.file is not None
+        assert image_bytes is not None
+        assert image_bytes.tell() == 0
+        assert len(image_bytes.read()) > 0
 
     def test_get_detected_objects(self, detection_service, temp_directories, sample_result):
         """Test getting detected objects without visualization."""
@@ -50,9 +51,9 @@ class TestObjectDetectionService:
 
         detections = detection_service.get_detected_objects(str(image_path))
 
-        assert isinstance(detections, list)
-        assert len(detections) == 2
-        assert detections[0]["label"] == "person"
+        assert isinstance(detections, dict)
+        assert len(detections["detections"]) == 2
+        assert detections["detections"][0]["label"] == "person"
         detection_service.engine.predict.assert_called_once()
 
     def test_get_bounding_boxes(self, detection_service, temp_directories, sample_result, mock_local_storage):

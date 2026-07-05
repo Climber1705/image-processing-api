@@ -5,7 +5,7 @@ Unit tests for health check endpoints.
 import pytest
 from unittest.mock import Mock, patch
 
-from app.services.inference.engine import EngineMetadata
+from app.vision.inference.engine import EngineMetadata
 
 
 @pytest.mark.unit

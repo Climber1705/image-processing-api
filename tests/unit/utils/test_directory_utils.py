@@ -5,7 +5,7 @@ Unit tests for DirectoryManager utility.
 import pytest
 from fastapi import HTTPException
 
-from app.utils.file_operations.directory_utils import DirectoryManager
+from app.media.utils.directory_utils import DirectoryManager
 
 
 @pytest.mark.unit

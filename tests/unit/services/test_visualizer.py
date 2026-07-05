@@ -5,8 +5,8 @@ Unit tests for inference visualizer.
 import pytest
 from PIL import Image
 
-from app.services.inference.schemas import Detection
-from app.services.inference.visualizer import draw_bounding_boxes
+from app.vision.inference.schemas import Detection
+from app.vision.inference.visualizer import draw_bounding_boxes
 
 
 @pytest.mark.unit

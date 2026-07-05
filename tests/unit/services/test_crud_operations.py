@@ -8,8 +8,8 @@ from fastapi import HTTPException
 from PIL import Image
 from pathlib import Path
 
-from app.services.image.crud_operations import ImageCRUDService
-from app.schemas.image.image_responses import ImageListItem
+from app.media.crud_operations import ImageCRUDService
+from app.media.schema import ImageListItem
 
 
 @pytest.mark.unit
