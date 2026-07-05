@@ -42,11 +42,6 @@ RUN apt-get purge -y build-essential libjpeg-dev zlib1g-dev libpng-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-RUN find /usr/local/lib/python3.12 -type d -name __pycache__ -exec rm -r {} + 2>/dev/null || true && \
-    find /usr/local/lib/python3.12 -name "*.pyc" -delete && \
-    find /usr/local/lib/python3.12 -name "*.pyo" -delete && \
-    rm -rf /root/.cache/pip
-
 EXPOSE 8000
 
 ENV PYTHONUNBUFFERED=1
