@@ -57,7 +57,7 @@ async def create_image(
             f"Uploading image: {file.filename} as {form.filename or file.filename} with format {form.format}"
         )
         result = await asyncio.to_thread(
-            image_service.save_uploaded_image, file, form.filename, form.format
+            image_service.upload_image, file, form.filename, form.format
         )
         logger.info(f"Image uploaded successfully: {result.path}")
         return to_upload_response(result)
