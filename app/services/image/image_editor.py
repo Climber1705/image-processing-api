@@ -1,22 +1,17 @@
-from PIL import Image, ImageOps, ImageFilter, ImageEnhance
-from pathlib import Path
-from typing import Annotated, Dict, Callable, Any, Optional
-from fastapi import Depends, HTTPException
-
 import os
+from pathlib import Path
+from fastapi import HTTPException
+from typing import Dict, Callable, Any, Optional
+from PIL import Image, ImageOps, ImageFilter, ImageEnhance
 
-from app.services.image.crud_operations import ImageCRUDService, get_image_crud_service
-from app.core.dependencies import get_directories
 from app.core.logging_config import get_logger
+from app.services.image.crud_operations import ImageCRUDService
 
 logger = get_logger("image_editor")
 
-ImageCRUDServiceDep = Annotated[ImageCRUDService, Depends(get_image_crud_service)]
-DirectoriesDep = Annotated[Dict[str, Path], Depends(get_directories)]
-
 
 class ImageEditService:
-    def __init__(self, image_crud: ImageCRUDServiceDep, directories: DirectoriesDep):
+    def __init__(self, image_crud: ImageCRUDService, directories: Dict[str, Path]):
         self.image_crud = image_crud
         self.directories = directories
 
@@ -118,9 +113,3 @@ class ImageEditService:
             factor=factor,
         )
 
-
-def get_image_edit_service(
-    image_crud: ImageCRUDServiceDep,
-    directories: DirectoriesDep,
-) -> ImageEditService:
-    return ImageEditService(image_crud=image_crud, directories=directories)
