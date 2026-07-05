@@ -6,7 +6,6 @@ from fastapi import APIRouter, Request, UploadFile, HTTPException, status, Depen
 from app.core.rate_limiting import limiter
 from app.core.logging_config import get_logger
 from app.dependencies.services import get_image_service
-from app.dependencies.validation import get_simple_image_validator
 from app.media.api import (
     CreateImageForm,
     FolderFilterQuery,
@@ -28,7 +27,7 @@ from app.media.utils.mappers import (
 )
 from app.media.service import ImageService
 from app.media.domain.errors import MediaDomainError
-from app.validation.simple_validator import SimpleImageValidator
+from app.validation.validator import validate_upload
 
 logger = get_logger("image_routes")
 
@@ -46,11 +45,10 @@ async def create_image(
     file: UploadFile,
     form: CreateImageForm = Depends(get_create_image_form),
     image_service: ImageService = Depends(get_image_service),
-    validator: SimpleImageValidator = Depends(get_simple_image_validator),
 ):
     """Upload an image file with optional custom filename and output format."""
     try:
-        await asyncio.to_thread(validator.validate, file)
+        await asyncio.to_thread(validate_upload, file)
 
         logger.info(
             "Uploading image: %s as %s with format %s",

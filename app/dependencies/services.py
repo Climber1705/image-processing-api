@@ -1,6 +1,6 @@
 from fastapi import Request, Depends
 
-from app.dependencies.validation import get_simple_image_validator
+from app.core.config import Settings, get_settings
 from app.dependencies.repositories import get_image_repository
 from app.dependencies.storage import get_local_image_storage
 from app.media.repository import ImageRepository
@@ -9,18 +9,17 @@ from app.media.service import ImageService
 from app.vision.detection_service import ObjectDetectionService
 from app.vision.inference.engine import InferenceEngine
 from app.storage.base_storage import BaseImageStorage
-from app.validation.simple_validator import SimpleImageValidator
 
 
 def get_image_service(
     image_repository: ImageRepository = Depends(get_image_repository),
     storage: BaseImageStorage = Depends(get_local_image_storage),
-    validator: SimpleImageValidator = Depends(get_simple_image_validator),
+    settings: Settings = Depends(get_settings),
 ) -> ImageService:
     return ImageService(
         repository=image_repository,
         storage=storage,
-        validator=validator,
+        format_extensions=settings.format_extensions,
     )
 
 

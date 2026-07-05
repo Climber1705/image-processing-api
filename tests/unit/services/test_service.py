@@ -28,15 +28,15 @@ class TestImageService:
         return Mock()
 
     @pytest.fixture
-    def image_service(self, temp_directories, mock_repository, mock_image_validator):
+    def image_service(self, temp_directories, mock_repository, format_extensions):
         storage = LocalImageStorage(
             directories=temp_directories,
-            format_helper=mock_image_validator,
+            format_extensions=format_extensions,
         )
         return ImageService(
             repository=mock_repository,
             storage=storage,
-            validator=mock_image_validator,
+            format_extensions=format_extensions,
         )
 
     def _make_record(self, filename: str, folder: str, path: Path, width: int = 100, height: int = 100):

@@ -1,7 +1,9 @@
+import uuid
 from pathlib import Path
 
 from fastapi import UploadFile
 
+from app.core.config import Settings
 from app.core.logging_config import get_logger
 from app.media.domain.dtos import (
     DeleteImageResultDTO,
@@ -24,7 +26,7 @@ from app.media.utils.hash import compute_checksum
 from app.media.utils.mappers import record_to_dto
 from app.media.repository import ImageRepository
 from app.storage.base_storage import BaseImageStorage
-from app.validation.simple_validator import SimpleImageValidator
+from app.validation.validator import get_format_extension, validate_image_format
 
 logger = get_logger("image_service")
 
@@ -32,13 +34,13 @@ logger = get_logger("image_service")
 class ImageService:
     def __init__(
         self,
+        settings: Settings,
         repository: ImageRepository,
         storage: BaseImageStorage,
-        validator: SimpleImageValidator,
     ) -> None:
         self.repository = repository
         self.storage = storage
-        self.validator = validator
+        self.settings = settings
 
     def upload_image(
         self,
@@ -46,8 +48,8 @@ class ImageService:
         filename: str | None = None,
         output_format: str = "JPEG",
     ) -> SaveImageResultDTO:
-        validated_format = self.validator.validate_format(output_format)
-        extension = self.validator.get_extension(validated_format)
+        validated_format = validate_image_format(output_format, self.settings.format_extensions)
+        extension = get_format_extension(validated_format, self.settings.format_extensions)
         display_filename = get_display_filename(filename, file.filename, extension)
         logger.info("Saving uploaded image as %s", display_filename)
 
@@ -60,7 +62,7 @@ class ImageService:
             existing_image = record_to_dto(existing_record)
             return SaveImageResultDTO(path=existing_image.path, image=existing_image)
 
-        image_id = self.repository.generate_image_id()
+        image_id = str(uuid.uuid4())
         file.file.seek(0)
         saved_path = self.storage.save(
             file=file.file,

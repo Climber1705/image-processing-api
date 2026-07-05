@@ -23,11 +23,11 @@ class TestLocalImageStorage:
     """Test cases for LocalImageStorage."""
 
     @pytest.fixture
-    def storage_service(self, temp_directories, mock_image_validator):
+    def storage_service(self, temp_directories, format_extensions):
         """Create LocalImageStorage with test directories."""
         return LocalImageStorage(
             directories=temp_directories,
-            format_helper=mock_image_validator,
+            format_extensions=format_extensions,
         )
 
     def test_save_valid_image(self, storage_service, temp_directories, valid_upload_file):

@@ -16,14 +16,14 @@ from app.storage.local_storage import LocalImageStorage
 @pytest.mark.unit
 class TestDuplicateUpload:
     @pytest.fixture
-    def image_service(self, temp_directories, mock_image_validator):
+    def image_service(self, temp_directories, format_extensions):
         return ImageService(
             repository=Mock(),
             storage=LocalImageStorage(
                 directories=temp_directories,
-                format_helper=mock_image_validator,
+                format_extensions=format_extensions,
             ),
-            validator=mock_image_validator,
+            format_extensions=format_extensions,
         )
 
     def _upload_file(self, name: str = "photo.jpg"):

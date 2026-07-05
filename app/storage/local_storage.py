@@ -8,7 +8,7 @@ from PIL import Image, UnidentifiedImageError
 from app.core.logging_config import get_logger
 from app.storage.base_storage import BaseImageStorage
 from app.storage.directories import DirectoryManager
-from app.validation.simple_validator import SimpleImageValidator
+from app.validation.validator import get_format_extension, validate_image_format
 
 logger = get_logger("local_storage")
 
@@ -17,10 +17,10 @@ class LocalImageStorage(BaseImageStorage):
     def __init__(
         self,
         directories: dict[str, Path],
-        format_helper: SimpleImageValidator,
+        format_extensions: dict[str, str],
     ):
         self._dirs = DirectoryManager(directories)
-        self._formats = format_helper
+        self._format_extensions = format_extensions
 
     def destination_path(self, source: str | Path, target_folder: str) -> Path:
         return self._dirs.get_directory(target_folder) / Path(source).name
@@ -37,8 +37,8 @@ class LocalImageStorage(BaseImageStorage):
         *,
         display_filename: str | None = None,
     ) -> str:
-        validated_format = self._formats.validate_format(format)
-        ext = self._formats.get_extension(validated_format)
+        validated_format = validate_image_format(format, self._format_extensions)
+        ext = get_format_extension(validated_format, self._format_extensions)
         if display_filename is not None:
             file_path = self._dirs.get_directory(folder) / storage_id / display_filename
         else:

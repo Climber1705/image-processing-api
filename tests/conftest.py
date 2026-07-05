@@ -23,12 +23,10 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.storage.directories import DirectoryManager
-from app.validation.simple_validator import SimpleImageValidator
 from app.storage.local_storage import LocalImageStorage
 from app.media.service import ImageService
 from app.editing.image_editor import ImageEditService
 from app.vision.detection_service import ObjectDetectionService
-from app.dependencies.validation import get_simple_image_validator
 from app.dependencies.storage import get_local_image_storage
 from app.dependencies.services import (
     get_image_edit_service,
@@ -72,33 +70,6 @@ def mock_directory_manager(temp_directories: Dict[str, Path]) -> Mock:
     mock.get_directory.side_effect = lambda folder: temp_directories.get(folder)
     mock.validate_folder.side_effect = lambda folder: folder in temp_directories
     return mock
-
-@pytest.fixture
-def mock_image_validator() -> Mock:
-    """Create a mock SimpleImageValidator."""
-    mock = Mock(spec=SimpleImageValidator)
-    
-    def validate_side_effect(file: UploadFile):
-        """Validate file type - reject non-image files."""
-        if file.content_type and not file.content_type.startswith("image/"):
-            raise HTTPException(status_code=400, detail=f"Unsupported file type: {file.content_type}. Allowed types: image/jpeg, image/png")
-    
-    def validate_type_side_effect(file: UploadFile):
-        """Validate file type."""
-        if file.content_type and not file.content_type.startswith("image/"):
-            raise HTTPException(status_code=400, detail=f"Unsupported file type: {file.content_type}. Allowed types: image/jpeg, image/png")
-    
-    mock.validate.side_effect = validate_side_effect
-    mock.validate_type.side_effect = validate_type_side_effect
-    mock.validate_size.return_value = None
-    mock.validate_format.side_effect = lambda fmt: fmt.upper()
-    mock.get_extension.side_effect = lambda fmt: {
-        "JPEG": ".jpg",
-        "PNG": ".png",
-        "GIF": ".gif"
-    }.get(fmt.upper(), ".jpg")
-    return mock
-
 
 @pytest.fixture
 def mock_image_service(temp_directories: Dict[str, Path], mock_local_storage: Mock) -> Mock:
@@ -475,7 +446,6 @@ def test_client(mock_inference_engine) -> TestClient:
 @pytest.fixture
 def test_client_with_overrides(
     temp_directories: Dict[str, Path],
-    mock_image_validator: Mock,
     mock_local_storage: Mock,
     mock_image_edit_service: Mock,
     mock_image_service: Mock,
@@ -483,9 +453,6 @@ def test_client_with_overrides(
     mock_inference_engine: Mock,
 ) -> TestClient:
     """Create a FastAPI test client with dependency overrides."""
-    def override_get_simple_image_validator():
-        return mock_image_validator
-
     def override_get_local_image_storage():
         return mock_local_storage
 
@@ -498,7 +465,6 @@ def test_client_with_overrides(
     def override_get_object_detection_service():
         return mock_detection_service
 
-    app.dependency_overrides[get_simple_image_validator] = override_get_simple_image_validator
     app.dependency_overrides[get_local_image_storage] = override_get_local_image_storage
     app.dependency_overrides[get_image_edit_service] = override_get_image_edit_service
     app.dependency_overrides[get_image_service] = override_get_image_service

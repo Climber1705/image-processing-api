@@ -16,7 +16,7 @@ class TestImageEditService:
     """Test cases for ImageEditService."""
 
     @pytest.fixture
-    def edit_service(self, temp_directories, mock_image_validator):
+    def edit_service(self, temp_directories, format_extensions):
         """Create ImageEditService with real storage and mocked CRUD."""
         mock_image_service = Mock()
 
@@ -30,7 +30,7 @@ class TestImageEditService:
 
         storage = LocalImageStorage(
             directories=temp_directories,
-            format_helper=mock_image_validator,
+            format_extensions=format_extensions,
         )
 
         return ImageEditService(
