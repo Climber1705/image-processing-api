@@ -314,6 +314,19 @@ def mock_detection_service(temp_directories: Dict[str, Path]) -> Mock:
     
     mock.get_bounding_boxes.return_value = str(temp_directories["detected"] / "test_bounding_boxes.jpg")
     mock.get_detected_objects.return_value = mock_detections
+    mock.detect_with_visualization.return_value = {
+        "image_with_boxes": str(temp_directories["detected"] / "test_bounding_boxes.jpg"),
+        "detections": mock_detections,
+        "model_name": "facebook/detr-resnet-50",
+        "model_version": None,
+    }
+    from app.services.inference.engine import EngineMetadata
+
+    mock.engine = Mock()
+    mock.engine.metadata = EngineMetadata(
+        model_name="facebook/detr-resnet-50",
+        model_revision=None,
+    )
     return mock
 
 
@@ -385,6 +398,8 @@ def mock_inference_engine(mock_detr_model):
     )
     engine.is_ready = True
     engine.warmup = Mock()
+    engine.predict = Mock()
+    engine.inference_count = 0
     return engine
 
 
@@ -442,7 +457,6 @@ def test_client_with_overrides(
     
     def override_get_image_manager():
         return ImageManager(
-            directory_manager=mock_directory_manager,
             local_storage=mock_local_storage,
             image_CRUD=mock_image_crud_service,
             metadata_extractor=mock_metadata_extractor
