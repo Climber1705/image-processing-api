@@ -6,7 +6,7 @@ from PIL import Image, UnidentifiedImageError
 from app.vision.domain.errors import CorruptImageError, InvalidInputError
 
 
-def _open_rgb(source: Path | BytesIO, label: str) -> Image.Image:
+def open_rgb(source: Path | BytesIO, label: str) -> Image.Image:
     try:
         with Image.open(source) as img:
             img.verify()
@@ -29,10 +29,10 @@ def load_from_path(path: Path) -> Image.Image:
         raise InvalidInputError(f"Image {path.name} not found")
     if path.stat().st_size == 0:
         raise CorruptImageError(f"Image file is empty: {path.name}")
-    return _open_rgb(path, path.name)
+    return open_rgb(path, path.name)
 
 
 def load_from_bytes(data: bytes, label: str) -> Image.Image:
     if not data:
         raise CorruptImageError(f"Image file is empty: {label}")
-    return _open_rgb(BytesIO(data), label)
+    return open_rgb(BytesIO(data), label)
