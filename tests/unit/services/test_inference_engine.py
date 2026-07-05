@@ -9,7 +9,7 @@ import torch
 
 from app.core.config import settings
 from app.vision.inference.engine import EngineMetadata, InferenceEngine
-from app.dependencies.services import get_object_detection_service
+from app.dependencies.services import get_inference_service
 
 
 @pytest.mark.unit
@@ -109,17 +109,19 @@ class TestInferenceEngine:
         assert result.detections[0].box == [10.0, 20.0, 30.0, 40.0]
         assert result.model_name == settings.MODEL_NAME
 
-    def test_get_object_detection_service_uses_shared_engine(
+    def test_get_inference_service_uses_shared_engine(
         self, mock_local_storage, mock_inference_engine
     ):
         request = Mock()
         request.app.state.inference_engine = mock_inference_engine
         mock_image_service = Mock()
+        mock_image_repository = Mock()
 
-        service = get_object_detection_service(
+        service = get_inference_service(
             request=request,
             storage=mock_local_storage,
             image_service=mock_image_service,
+            image_repository=mock_image_repository,
         )
 
         assert service.engine is mock_inference_engine

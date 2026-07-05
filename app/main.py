@@ -8,6 +8,7 @@ from app.core.lifespan import lifespan
 from app.core.rate_limiting import limiter
 from app.editing.api.handlers import register_editing_exception_handlers
 from app.media.api.handlers import register_media_exception_handlers
+from app.vision.api.handlers import register_vision_exception_handlers
 
 description = """
 Upload, manage, and process images.
@@ -26,6 +27,7 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 register_media_exception_handlers(app)
 register_editing_exception_handlers(app)
+register_vision_exception_handlers(app)
 app.add_middleware(SlowAPIMiddleware)
 
 app.include_router(router)

@@ -27,12 +27,13 @@ from app.storage.local_storage import LocalImageStorage
 from app.media.service import ImageService
 from app.editing.domain.dtos import EditResultDTO
 from app.editing.service import ImageEditService
-from app.vision.detection_service import ObjectDetectionService
+from app.vision.domain.dtos import DetectResponseDTO, DetectionsResultDTO, DetectionDTO, InferenceMetadataDTO
+from app.vision.service import InferenceService
 from app.dependencies.storage import get_local_image_storage
 from app.dependencies.services import (
     get_image_edit_service,
     get_image_service,
-    get_object_detection_service,
+    get_inference_service,
 )
 
 
@@ -309,48 +310,24 @@ def mock_image_edit_service(temp_directories: Dict[str, Path]) -> Mock:
 
 @pytest.fixture
 def mock_detection_service(temp_directories: Dict[str, Path]) -> Mock:
-    """Create a mock ObjectDetectionService with mocked DETR model."""
-    mock = Mock(spec=ObjectDetectionService)
+    """Create a mock InferenceService with mocked DETR model."""
+    mock = Mock(spec=InferenceService)
     
     mock_detections = [
-        {
-            "label": "person",
-            "confidence": 0.95,
-            "box": [100.0, 100.0, 200.0, 300.0]
-        },
-        {
-            "label": "car",
-            "confidence": 0.87,
-            "box": [300.0, 150.0, 500.0, 400.0]
-        }
+        DetectionDTO(label="person", confidence=0.95, box=[100.0, 100.0, 200.0, 300.0]),
+        DetectionDTO(label="car", confidence=0.87, box=[300.0, 150.0, 500.0, 400.0]),
     ]
-    
-    mock.get_bounding_boxes.return_value = str(temp_directories["detected"] / "test_bounding_boxes.jpg")
-    mock.get_detected_objects.return_value = {
-        "detections": mock_detections,
-        "model_name": "facebook/detr-resnet-50",
-        "model_version": None,
-    }
-    mock.detect_with_visualization.return_value = {
-        "image_with_boxes": str(temp_directories["detected"] / "test_bounding_boxes.jpg"),
-        "detections": mock_detections,
-        "model_name": "facebook/detr-resnet-50",
-        "model_version": None,
-    }
-    from app.vision.inference.engine import EngineMetadata
+    metadata = InferenceMetadataDTO(model_name="facebook/detr-resnet-50", model_version=None)
 
-    mock.engine = Mock()
-    detection_result = {
-        "image_with_boxes": str(temp_directories["detected"] / "test_bounding_boxes.jpg"),
-        "detections": mock_detections,
-        "model_name": "facebook/detr-resnet-50",
-        "model_version": None,
-    }
-    objects_result = {
-        "detections": mock_detections,
-        "model_name": "facebook/detr-resnet-50",
-        "model_version": None,
-    }
+    detection_result = DetectResponseDTO(
+        image_path=str(temp_directories["detected"] / "test_bounding_boxes.jpg"),
+        detections=mock_detections,
+        metadata=metadata,
+    )
+    objects_result = DetectionsResultDTO(
+        detections=mock_detections,
+        metadata=metadata,
+    )
 
     def _resolve_image_path(filename: str, folder: str = "uploaded") -> Path:
         return temp_directories.get(folder, temp_directories["uploaded"]) / filename
@@ -367,6 +344,9 @@ def mock_detection_service(temp_directories: Dict[str, Path]) -> Mock:
 
     mock.detect_for_filename.side_effect = detect_for_filename_side_effect
     mock.get_detected_objects_for_filename.side_effect = get_detected_objects_for_filename_side_effect
+    from app.vision.inference.engine import EngineMetadata
+
+    mock.engine = Mock()
     mock.engine.metadata = EngineMetadata(
         model_name="facebook/detr-resnet-50",
         model_revision=None,
@@ -477,13 +457,13 @@ def test_client_with_overrides(
     def override_get_image_service():
         return mock_image_service
 
-    def override_get_object_detection_service():
+    def override_get_inference_service():
         return mock_detection_service
 
     app.dependency_overrides[get_local_image_storage] = override_get_local_image_storage
     app.dependency_overrides[get_image_edit_service] = override_get_image_edit_service
     app.dependency_overrides[get_image_service] = override_get_image_service
-    app.dependency_overrides[get_object_detection_service] = override_get_object_detection_service
+    app.dependency_overrides[get_inference_service] = override_get_inference_service
 
     with patch(
         "app.core.lifespan.InferenceEngine.from_settings",

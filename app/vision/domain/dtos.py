@@ -2,20 +2,24 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
-class Detection:
+class DetectionDTO:
     label: str
     confidence: float
     box: list[float]
 
 
 @dataclass(frozen=True, slots=True)
-class DetectionResult:
-    detections: list[Detection]
+class InferenceMetadataDTO:
     model_name: str
     model_version: str | None
 
 
 @dataclass(frozen=True, slots=True)
-class EngineMetadata:
-    model_name: str
-    model_revision: str | None
+class DetectionsResultDTO:
+    detections: list[DetectionDTO]
+    metadata: InferenceMetadataDTO
+
+
+@dataclass(frozen=True, slots=True)
+class DetectResponseDTO(DetectionsResultDTO):
+    image_path: str

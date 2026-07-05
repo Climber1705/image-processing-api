@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class DetectionBox(BaseModel):
@@ -7,12 +7,18 @@ class DetectionBox(BaseModel):
     box: list[float]
 
 
+class InferenceMetadata(BaseModel):
+    model_name: str
+    model_version: str | None = None
+
+
 class BoundingBoxResponse(BaseModel):
     message: str
     image_path: str
     detections: list[DetectionBox]
     model_name: str
     model_version: str | None = None
+    detection_count: int = Field(..., ge=0)
 
 
 class DetectedObjectsResponse(BaseModel):
@@ -20,3 +26,4 @@ class DetectedObjectsResponse(BaseModel):
     detected_objects: list[DetectionBox]
     model_name: str
     model_version: str | None = None
+    detection_count: int = Field(..., ge=0)
