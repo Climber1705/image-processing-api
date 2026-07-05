@@ -28,7 +28,7 @@ Development guidelines and testing instructions for the Image Processing API.
 
 3. **Install dependencies:**
    ```bash
-   pip install -r requirements.txt
+   pip install -e ".[test]"
    ```
 
 4. **Configure environment:**
