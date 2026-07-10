@@ -2,10 +2,12 @@
 Integration tests for image management API routes.
 """
 
-import pytest
 from io import BytesIO
-from PIL import Image
+
+import pytest
 from fastapi import status
+from PIL import Image
+
 
 @pytest.mark.integration
 class TestImageRoutes:
@@ -21,7 +23,7 @@ class TestImageRoutes:
         files = {"file": ("test_upload.jpg", img_bytes, "image/jpeg")}
         data = {"filename": "test_upload", "format": "JPEG"}
         
-        response = test_client_with_overrides.post("/images/upload", files=files, data=data)
+        response = test_client_with_overrides.post("/images", files=files, data=data)
         
         assert response.status_code == status.HTTP_201_CREATED
         assert "path" in response.json()
@@ -31,7 +33,7 @@ class TestImageRoutes:
         """Test uploading invalid image format."""
         files = {"file": ("test.txt", BytesIO(b"not an image"), "text/plain")}
         
-        response = test_client_with_overrides.post("/images/upload", files=files)
+        response = test_client_with_overrides.post("/images", files=files)
         
         assert response.status_code in [400, 422]
 
@@ -42,7 +44,7 @@ class TestImageRoutes:
             img = Image.new('RGB', (100, 100), color='blue')
             img.save(img_path, format="JPEG")
         
-        response = test_client_with_overrides.get("/images/?folder=uploaded&limit=10&offset=0")
+        response = test_client_with_overrides.get("/images?folder=uploaded&limit=10&offset=0")
         
         assert response.status_code == status.HTTP_200_OK
         assert isinstance(response.json(), list)
@@ -54,7 +56,7 @@ class TestImageRoutes:
             img = Image.new('RGB', (100, 100), color='green')
             img.save(img_path, format="JPEG")
         
-        response = test_client_with_overrides.get("/images/?folder=uploaded&limit=2&offset=0")
+        response = test_client_with_overrides.get("/images?folder=uploaded&limit=2&offset=0")
         
         assert response.status_code == status.HTTP_200_OK
         assert len(response.json()) <= 2
@@ -65,7 +67,7 @@ class TestImageRoutes:
         img = Image.new('RGB', (800, 600), color='red')
         img.save(img_path, format="JPEG")
         
-        response = test_client_with_overrides.get("/images/test_detail.jpg/detail?folder=uploaded")
+        response = test_client_with_overrides.get("/images/test_detail.jpg?folder=uploaded")
         
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -75,23 +77,9 @@ class TestImageRoutes:
 
     def test_get_image_detail_not_found(self, test_client_with_overrides):
         """Test getting details for non-existent image."""
-        response = test_client_with_overrides.get("/images/nonexistent.jpg/detail?folder=uploaded")
+        response = test_client_with_overrides.get("/images/nonexistent.jpg?folder=uploaded")
         
         assert response.status_code == status.HTTP_404_NOT_FOUND
-
-    def test_get_image_dimensions(self, test_client_with_overrides, temp_directories):
-        """Test getting image dimensions."""
-        # Create test image
-        img_path = temp_directories["uploaded"] / "test_dim.jpg"
-        img = Image.new('RGB', (1920, 1080), color='blue')
-        img.save(img_path, format="JPEG")
-        
-        response = test_client_with_overrides.get("/images/test_dim.jpg/metadata/dimensions?folder=uploaded")
-        
-        assert response.status_code == status.HTTP_200_OK
-        data = response.json()
-        assert data["width"] == 1920
-        assert data["height"] == 1080
 
     def test_delete_image_success(self, test_client_with_overrides, temp_directories):
         """Test successful image deletion."""
@@ -99,14 +87,14 @@ class TestImageRoutes:
         img = Image.new('RGB', (100, 100), color='red')
         img.save(img_path, format="JPEG")
         
-        response = test_client_with_overrides.delete("/images/test_delete.jpg/delete?folder=uploaded")
+        response = test_client_with_overrides.delete("/images/test_delete.jpg?folder=uploaded")
         
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["status"] == "success"
 
     def test_delete_image_not_found(self, test_client_with_overrides):
         """Test deleting non-existent image."""
-        response = test_client_with_overrides.delete("/images/nonexistent.jpg/delete?folder=uploaded")
+        response = test_client_with_overrides.delete("/images/nonexistent.jpg?folder=uploaded")
         
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -117,7 +105,7 @@ class TestImageRoutes:
         img.save(img_path, format="JPEG")
         
         data = {"source_folder": "uploaded", "target_folder": "edited"}
-        response = test_client_with_overrides.post("/images/test_move.jpg/move", json=data)
+        response = test_client_with_overrides.patch("/images/test_move.jpg", json=data)
         
         assert response.status_code == status.HTTP_200_OK
         assert "filename" in response.json()
@@ -129,7 +117,7 @@ class TestImageRoutes:
             img = Image.new('RGB', (100, 100), color='blue')
             img.save(img_path, format="JPEG")
         
-        response = test_client_with_overrides.delete("/images/clear_all?folder=uploaded")
+        response = test_client_with_overrides.delete("/images?folder=uploaded")
         
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["status"] == "success"

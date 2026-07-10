@@ -1,114 +1,150 @@
 # Image Processing API
 
-FastAPI service for uploading and managing images, applying Pillow-based transformations, and running object detection with a pretrained DETR model.
+FastAPI service for uploading and managing images, applying Pillow-based transformations, and running COCO-pretrained object detection with DETR.
 
 ## Key features
 
-- **Structured HTTP API** — Routes, Pydantic schemas, and OpenAPI docs at `/docs` (`app/main.py`, `app/schemas/`).
-- **Layered request handling** — Routes delegate to managers, which coordinate services for CRUD, editing, and detection (`app/managers/`, `app/services/`).
-- **Image lifecycle management** — Upload, list (with pagination), metadata lookup, move, delete, and bulk clear across `uploaded`, `edited`, and `detected` folders (`app/api/routes/image_routes.py`, `app/services/image/crud_operations.py`).
-- **Pillow editing pipeline** — Resize, rotate, grayscale, blur, sharpen, brightness, and contrast operations via a shared `_process_image` helper (`app/services/image/image_editor.py`).
-- **DETR object detection** — Runs `facebook/detr-resnet-50` through Hugging Face Transformers; returns bounding-box metadata and optional annotated images at confidence ≥ 0.5 (`app/services/detection/detection_service.py`).
-- **Non-blocking route handlers** — CPU-bound and I/O work runs in thread pools via `asyncio.to_thread()` so the event loop stays free (`app/api/routes/`).
-- **Containerized deployment** — Multi-stage Dockerfile runs the test suite at build time (80% coverage gate), strips dev dependencies, and exposes a `/health` endpoint for orchestration (`Dockerfile`, `docker-compose.yml`).
+- **Structured HTTP API** — FastAPI routes with Pydantic request/response models and OpenAPI docs at `/docs` (`app/main.py`, `app/api/routes/`).
+- **Bounded-context layout** — Separate `media`, `editing`, and `vision` packages, each with `api/`, `domain/`, and service layers (`docs/ARCHITECTURE.md`).
+- **Image lifecycle with metadata** — Upload, paginated list, lookup, move, delete, and bulk clear across `uploaded`, `edited`, and `detected` folders; SQLite records track dimensions, format, and content hash (`app/media/service.py`, `app/models/image.py`).
+- **Content-hash deduplication** — Re-uploading identical bytes in the same folder returns the existing record instead of writing a duplicate file (`app/media/service.py`, `app/media/utils/hash.py`).
+- **Pillow editing pipeline** — Resize, rotate, grayscale, blur, sharpen, brightness, and contrast; outputs saved to the `edited` folder (`app/editing/operations.py`, `app/editing/service.py`).
+- **DETR object detection** — Runs `facebook/detr-resnet-50` via Hugging Face Transformers at `/v1/inference/*`; returns bounding-box metadata and optional annotated images (`app/vision/inference/engine.py`).
+- **Capped inference concurrency** — CPU-bound detection runs in a thread pool behind an `asyncio` semaphore (`MAX_CONCURRENT_INFERENCES`, default 2) (`app/dependencies/inference.py`).
 
 ## Architecture
 
-The codebase follows a four-layer layout: API routes → managers → services → core/utils. Routes validate input and map HTTP concerns; managers orchestrate multi-step workflows; services hold domain logic (storage, editing, inference); core provides config, logging, and shared dependencies.
+The API is a single FastAPI process organized as vertical slices with shared infrastructure (`core/`, `dependencies/`, `storage/`, `db/`). HTTP adapters in `app/api/routes/` delegate to domain services; blocking work (filesystem I/O, Pillow, PyTorch) is offloaded with `asyncio.to_thread()`.
 
-Images live on the local filesystem under `app/static/{uploaded,edited,detected}/`. Storage is accessed through a `BaseImageStorage` abstract class with a `LocalImageStorage` implementation, leaving a seam for a different backend later without rewriting managers.
+Image bytes live on the local filesystem under `app/static/{uploaded,edited,detected}/`. Metadata and uniqueness constraints are stored in SQLite via SQLAlchemy. Storage is accessed through `BaseImageStorage`, with `LocalImageStorage` as the only implementation today.
+
+The DETR model loads once at startup (optional warmup); readiness is exposed at `/health/ready` (`app/core/lifespan.py`, `app/api/routes/health.py`).
 
 ```mermaid
 flowchart LR
-  Client --> Routes
-  Routes --> Managers
-  Managers --> Services
-  Services --> LocalFS["Local filesystem"]
-  Services --> DETR["DETR model\n(Hugging Face)"]
-  Routes --> Core["Config / logging"]
+  Client --> Routes["api/routes"]
+  Routes --> MediaService
+  Routes --> EditService
+  Routes --> InferenceService
+  InferenceService --> Engine["InferenceEngine\n(DETR)"]
+  MediaService --> Storage["Local filesystem"]
+  MediaService --> DB["SQLite metadata"]
+  EditService --> MediaService
+  InferenceService --> MediaService
 ```
 
 ## Technical highlights
 
 ### System design
-- FastAPI dependency injection wires validators, storage, CRUD, editors, and detection services into route handlers (`app/core/dependencies.py`, `app/core/config.py`).
-- Per-endpoint rate-limit strings are declared with slowapi decorators (e.g. `10/minute` on upload, `5/minute` on detection) (`app/core/rate_limiting.py`, route modules).
-- File logging to `logs/app.log` with module-level loggers (`app/core/logging_config.py`).
+- FastAPI dependency injection wires repositories, storage, and services into route handlers (`app/dependencies/`).
+- Per-endpoint rate limits via slowapi decorators and `SlowAPIMiddleware` (`app/core/rate_limiting.py`, `app/main.py`).
+- Domain exceptions in each bounded context map to HTTP status codes via registered handlers (`app/media/api/handlers.py`, `app/editing/api/handlers.py`, `app/vision/api/handlers.py`).
+- Filename sanitization and resolved-path containment checks prevent path traversal on storage writes (`app/media/utils/filename.py`, `app/storage/local_storage.py`).
+- Rotating file logging to `logs/app.log` (`app/core/logging_config.py`).
 
 ### ML & data
-- Object detection uses `DetrImageProcessor` and `DetrForObjectDetection` from Transformers; post-processing applies a 0.5 confidence threshold (`app/services/detection/detection_service.py`).
-- Annotated outputs use luminance-aware label colors and random box colors drawn with Pillow (`detection_service.py`).
+- Detection pipeline: preprocess (optional downscale) → `DetrForObjectDetection` → thresholded post-processing → DTO mapping (`app/vision/inference/preprocessor.py`, `postprocessor.py`, `engine.py`).
+- Configurable `CONFIDENCE_THRESHOLD`, `MAX_IMAGE_DIMENSION`, and `INFERENCE_DEVICE` (`app/core/config.py`).
+- Annotated outputs can be returned as base64 or persisted to the `detected` folder (`app/vision/service.py`, `app/vision/inference/visualizer.py`).
 
 ### DevOps
-- Docker Compose configs for dev (bind mounts, hot reload) and prod (named volumes, restart policy) (`docker-compose.dev.yml`, `docker-compose.yml`).
-- Dockerfile healthcheck hits `/health`; production compose mirrors the same check.
+- Dockerfile runs the fast test suite with an 80% coverage gate before producing the runtime image (`Dockerfile` line 24).
+- GitHub Actions runs `pytest -m "not inference"` with ruff, mypy, and the same coverage threshold on push and pull request (`.github/workflows/test.yml`).
+- Nightly/manual workflow runs real-model inference smoke tests (`.github/workflows/test-inference.yml`).
+- Production `docker-compose.yml` mounts named volumes for image folders and configures a readiness healthcheck.
 
 ### Testing
-- 15 test modules with unit and integration coverage; pytest configured for 80% minimum coverage (`tests/`, `pytest.ini`, `.coveragerc`).
-- Integration tests use dependency overrides and mocked detection to avoid loading PyTorch in CI-like runs (`tests/conftest.py`).
+- Unit and integration tests under `tests/`; fast CI mocks only the DETR model weights, not media or editing services (`tests/conftest.py`).
+- Full-stack integration tests use real SQLite, storage, and services via `test_client_full_stack` (`tests/integration/test_end_to_end.py`).
+- Real-model smoke tests use `@pytest.mark.inference` (`tests/inference/`); run locally with `pytest -m inference --no-cov`. Nightly/manual CI: `.github/workflows/test-inference.yml`.
 
 ## Engineering trade-offs
 
-| Decision | Chosen | Alternatives considered | Rationale |
-|---|---|---|---|
-| Storage | Local filesystem + abstract interface | Cloud object storage (S3, etc.) | Keeps deployment self-contained; `BaseImageStorage` preserves a migration path (`app/services/image/storage/`). |
-| Detection model | Pretrained DETR (`facebook/detr-resnet-50`) | Custom training / lighter detectors | Zero training infra; COCO-pretrained weights cover general object classes out of the box. |
-| Concurrency model | Async routes + `asyncio.to_thread()` | Fully synchronous handlers | Lets FastAPI accept concurrent requests while Pillow and PyTorch run off the event loop. |
-| Model loading | Initialized in `ObjectDetectionService.__init__` | Lazy load on first inference call | Simpler construction path; first request after startup pays download + load cost. Hugging Face caches weights on disk after the initial fetch. |
+| Decision | Chosen | Rationale |
+|---|---|---|
+| Storage | Local filesystem behind `BaseImageStorage` | Self-contained deployment; see [ADR 001](docs/adr/001-local-filesystem-storage.md) for rationale and migration path. |
+| Image metadata | SQLite + content-hash uniqueness | Supports list/filter/move without scanning the filesystem; deduplicates uploads per folder. |
+| Detection model | Pretrained DETR (`facebook/detr-resnet-50`) | No training infrastructure; COCO weights cover general object classes out of the box. |
+| Model lifecycle | Load at startup + optional warmup | Predictable `/health/ready` checks; first boot pays Hugging Face download cost once. |
+| Concurrency | Async routes + `asyncio.to_thread()` + inference semaphore | Keeps the event loop responsive while bounding parallel CPU-bound inference. |
 
 ## Tech stack
 
-Python 3.12 · FastAPI · Uvicorn · Pydantic / pydantic-settings · Pillow · PyTorch · Hugging Face Transformers · slowapi · pytest · Docker / Docker Compose
+Python 3.12 · FastAPI · Uvicorn · Pydantic / pydantic-settings · SQLAlchemy · Pillow · PyTorch · Hugging Face Transformers · slowapi · pytest · Docker
 
 ## Quick start
 
 ### Docker (recommended)
 
-Development with hot reload:
-
 ```bash
 docker-compose -f docker-compose.dev.yml up --build
 ```
 
-Production-style run:
-
-```bash
-docker-compose -f docker-compose.yml up --build -d
-```
-
-API: [http://localhost:8000](http://localhost:8000) · Interactive docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+API: http://localhost:8000 · Docs: http://localhost:8000/docs
 
 ### Manual setup
 
 ```bash
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
-cp .env-example .env
+pip install -e ".[test]"
+cp .env.example .env
 uvicorn app.main:app --reload
 ```
+
+Required configuration lives in `.env` (copy from `.env.example`). Common knobs: `LOG_LEVEL`, `MAX_UPLOAD_SIZE_MB`, `MAX_CONCURRENT_INFERENCES`, `MODEL_NAME`, `INFERENCE_DEVICE`, `DATABASE_URL`.
 
 Upload an image:
 
 ```bash
-curl -X POST "http://localhost:8000/images/upload" \
+curl -X POST "http://localhost:8000/images" \
   -F "file=@photo.jpg" \
   -F "filename=my_photo" \
   -F "format=JPEG"
 ```
 
-Run tests:
+End-to-end workflow (upload → resize → detect with visualization):
 
 ```bash
-pytest
+# 1. Upload
+curl -X POST "http://localhost:8000/images" \
+  -F "file=@photo.jpg" \
+  -F "filename=demo" \
+  -F "format=JPEG"
+
+# 2. Resize (reads from uploaded/, writes to edited/)
+curl -X POST "http://localhost:8000/images/demo.jpg/edits/resize?width=400&height=300"
+
+# 3. Detect on a fresh upload and persist annotated output to detected/
+curl -X POST "http://localhost:8000/v1/inference/detect/visualize?persist=true" \
+  -F "file=@photo.jpg"
+```
+
+Run object detection only:
+
+```bash
+curl -X POST "http://localhost:8000/v1/inference/detect" \
+  -F "file=@photo.jpg"
+```
+
+Run tests (matches CI and Docker build gate):
+
+```bash
+pytest -m "not inference"
+```
+
+Run real-model inference smoke tests (slow; downloads DETR weights on first run):
+
+```bash
+pytest -m inference --no-cov
 ```
 
 Further setup, API reference, and deployment notes: [`docs/`](docs/README.md).
 
 ## What makes this project non-trivial
 
-This is a single-process FastAPI application, not a distributed system — but it goes beyond a tutorial CRUD demo in several ways. The codebase separates routes, managers, and services with dependency injection across ~15 modules, integrates a real transformer-based detector (PyTorch + Transformers), and wraps synchronous image/ML work for async concurrency. The Docker build bakes in a coverage-gated test run before shipping a slim runtime image. Documentation spans architecture, API, deployment, and per-module READMEs under `app/`.
+The service combines three concerns—filesystem-backed media management, a Pillow transform pipeline, and a Hugging Face DETR inference path—behind a consistent bounded-context structure rather than a single monolithic module. Upload deduplication, SQLite metadata with folder-scoped uniqueness constraints, and per-domain exception mapping reflect deliberate API design beyond a tutorial CRUD app. Inference is integrated into the same process with startup loading, semaphore-limited thread offload, and readiness probes suitable for container orchestration. Test coverage is enforced at 80% in both CI and the Docker build.
 
 ## License
 
-[GNU License](LICENSE)
+[GNU General Public License v3.0](LICENSE)

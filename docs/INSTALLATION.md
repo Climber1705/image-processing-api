@@ -48,7 +48,7 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 Install the required Python packages:
 
 ```bash
-pip install -r requirements.txt
+pip install -e ".[test]"
 ```
 
 ### 3. Configure the Environment
@@ -56,22 +56,13 @@ pip install -r requirements.txt
 Copy the environment variables template and modify it to match your local setup:
 
 ```bash
-cp .env-example .env
+cp .env.example .env
 # Edit .env with the appropriate values
 ```
 
 #### Environment Variables
 
-The following environment variables can be configured in your `.env` file:
-
-##### `DEBUG` (boolean, default: `False`)
-
-- Set to `True` for development environment
-- Enables debug mode with detailed error messages
-- Set to `False` for production environment
-- **Use Cases**:
-  - `True`: Development, testing, debugging
-  - `False`: Production deployments
+The following environment variables can be configured in your `.env` file (see `.env.example` for the full list):
 
 ##### `LOG_LEVEL` (string, default: `INFO`)
 
@@ -82,20 +73,25 @@ The following environment variables can be configured in your `.env` file:
   - `WARNING`: Indicates potential issues or important situations
   - `ERROR`: Errors that might require attention
   - `CRITICAL`: Severe errors that likely result in a crash or failure (least verbose)
-- **Use Cases**:
-  - `DEBUG`: Development, troubleshooting issues
-  - `INFO`: Production environments, general monitoring
-  - `WARNING`/`ERROR`/`CRITICAL`: Production with minimal logging
+
+##### Other common settings
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `MAX_UPLOAD_SIZE_MB` | `5` | Max upload size in megabytes |
+| `MAX_CONCURRENT_INFERENCES` | `2` | Semaphore limit for DETR inference |
+| `MODEL_NAME` | `facebook/detr-resnet-50` | Hugging Face model id |
+| `INFERENCE_DEVICE` | `cpu` | `cpu` or `cuda` |
+| `CONFIDENCE_THRESHOLD` | `0.5` | Detection score cutoff |
+| `DATABASE_URL` | `sqlite:///./app/data/images.db` | SQLAlchemy database URL |
 
 **Example `.env` file for development:**
 ```env
-DEBUG=True
 LOG_LEVEL=DEBUG
 ```
 
 **Example `.env` file for production:**
 ```env
-DEBUG=False
 LOG_LEVEL=INFO
 ```
 
@@ -127,7 +123,6 @@ docker-compose -f docker-compose.dev.yml up --build
 **Development Features:**
 - Hot reload enabled (code changes are automatically reflected)
 - Volume mounts for live code updates
-- DEBUG mode enabled
 - Detailed logging (LOG_LEVEL=DEBUG)
 - Accessible at [http://localhost:8000](http://localhost:8000)
 
@@ -146,7 +141,7 @@ docker-compose -f docker-compose.yml up --build -d
 
 **Production Features:**
 - Optimized image size (build dependencies removed after installation)
-- Health checks configured (uses `/health` endpoint)
+- Health checks configured (uses `/health/ready` endpoint)
 - Automatic restart on failure
 - Production logging (LOG_LEVEL=INFO)
 - Persistent data volumes for images and logs
@@ -183,7 +178,7 @@ docker-compose -f docker-compose.dev.yml run --rm app pytest --cov=app --cov-rep
 ### Docker Features
 
 - **Automatic Testing**: Tests run during image build (build fails if tests fail or coverage < 80%)
-- **Health Checks**: Docker healthcheck configured using the `/health` endpoint
+- **Health Checks**: Docker healthcheck configured using the `/health/ready` endpoint
 - **Optimized Images**: Build dependencies removed after installation to minimize image size
 - **Data Persistence**: Named volumes for uploaded images, edited images, detected outputs, and logs
 - **Environment Configuration**: Separate configurations for development and production
@@ -218,7 +213,7 @@ After installation, verify the API is working:
 
 1. **Check health endpoint:**
    ```bash
-   curl http://localhost:8000/health
+   curl http://localhost:8000/health/ready
    ```
 
 2. **Access interactive docs:**

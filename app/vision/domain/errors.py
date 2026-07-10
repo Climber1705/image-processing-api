@@ -1,0 +1,16 @@
+from app.domain.errors import DomainError
+
+
+class VisionDomainError(DomainError): ...
+
+
+class InvalidInputError(VisionDomainError): ...
+
+
+class ModelNotReadyError(VisionDomainError): ...
+
+
+class CorruptImageError(VisionDomainError): ...
+
+
+class InferenceError(VisionDomainError): ...

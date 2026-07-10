@@ -1,51 +1,72 @@
-from pydantic import Field, ConfigDict
-from pydantic_settings import BaseSettings
+from functools import lru_cache
 from pathlib import Path
 
-import logging
-import os
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-LOG_DIR = "logs"
-os.makedirs(LOG_DIR, exist_ok=True)
-
-log_file_path = os.path.join(LOG_DIR, "app.log")
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-file_handler = logging.FileHandler(log_file_path)
-file_handler.setLevel(logging.DEBUG)
-
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s - [%(filename)s:%(lineno)d]")
-file_handler.setFormatter(formatter)
-
-logger.addHandler(file_handler)
+from app.media.domain.enums import ImageFolder
 
 
 class Settings(BaseSettings):
-    APP_NAME: str = "FastAPI App"
-    DEBUG: bool = True
-    LOG_LEVEL: str = "DEBUG"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore",
+    )
+
+    APP_VERSION: str = "1.0.0"
+    LOG_LEVEL: str = "INFO"
 
     UPLOADED_FOLDER: Path = Field(default_factory=lambda: Path("app/static/uploaded"))
     EDITED_FOLDER: Path = Field(default_factory=lambda: Path("app/static/edited"))
     DETECTED_FOLDER: Path = Field(default_factory=lambda: Path("app/static/detected"))
 
-    model_config = ConfigDict(
-        env_file=".env",
-        extra="allow",
-    )
+    DATABASE_URL: str = "sqlite:///./app/data/images.db"
+
+    MODEL_NAME: str = "facebook/detr-resnet-50"
+    MODEL_REVISION: str | None = None
+    CONFIDENCE_THRESHOLD: float = 0.5
+    INFERENCE_DEVICE: str = "cpu"
+    MAX_IMAGE_DIMENSION: int = 1333
+    WARMUP_ON_STARTUP: bool = True
+    MAX_CONCURRENT_INFERENCES: int = 2
+    MAX_UPLOAD_SIZE_MB: int = 5
+
+    FORMAT_EXTENSIONS: dict[str, str] = {
+        "JPEG": ".jpg",
+        "JPG": ".jpg",
+        "PNG": ".png",
+        "GIF": ".gif",
+        "BMP": ".bmp",
+        "TIFF": ".tiff",
+        "WEBP": ".webp",
+    }
+
+    @property
+    def directories(self) -> dict[str, Path]:
+        return {
+            ImageFolder.UPLOADED: self.UPLOADED_FOLDER,
+            ImageFolder.EDITED: self.EDITED_FOLDER,
+            ImageFolder.DETECTED: self.DETECTED_FOLDER,
+        }
+
+    @property
+    def format_extensions(self) -> dict[str, str]:
+        return self.FORMAT_EXTENSIONS
 
     def setup(self) -> None:
         for path in [self.UPLOADED_FOLDER, self.EDITED_FOLDER, self.DETECTED_FOLDER]:
-            if not path.exists():
-                path.mkdir(parents=True, exist_ok=True)
-                logger.info(f"Created directory: {path}")
-            else:
-                logger.debug(f"Directory already exists: {path}")
+            path.mkdir(parents=True, exist_ok=True)
+
+        if self.DATABASE_URL.startswith("sqlite:///./"):
+            db_path = Path(self.DATABASE_URL.removeprefix("sqlite:///./"))
+            db_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-settings = Settings()
-settings.setup()
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    settings = Settings()
+    settings.setup()
+    return settings
 
-default = settings
+
+settings = get_settings()

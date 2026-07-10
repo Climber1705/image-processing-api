@@ -28,13 +28,13 @@ Development guidelines and testing instructions for the Image Processing API.
 
 3. **Install dependencies:**
    ```bash
-   pip install -r requirements.txt
+   pip install -e ".[test]"
    ```
 
 4. **Configure environment:**
    ```bash
-   cp .env-example .env
-   # Edit .env with DEBUG=True and LOG_LEVEL=DEBUG for development
+   cp .env.example .env
+   # Edit .env with LOG_LEVEL=DEBUG for development
    ```
 
 5. **Run the API in development mode:**
@@ -51,15 +51,16 @@ The project includes a comprehensive test suite with unit and integration tests,
 The test suite is organized into two main categories:
 
 - **Unit Tests** (`tests/unit/`): Test individual components in isolation
-  - Services: image_editor, crud_operations, metadata_handler, local_storage, detection_service
-  - Managers: image_manager, edit_manager, detection_manager
-  - Utils: file_utils, directory_utils, validators
+  - Media: image service, upload deduplication, hash utilities
+  - Editing: image edit service, operations
+  - Vision: inference service, engine, image loader, API mappers, visualizer
+  - Storage: local storage, validators
 
 - **Integration Tests** (`tests/integration/`): Test API endpoints and end-to-end workflows
-  - Image routes: upload, list, get details, delete, move, clear all
+  - Image routes: upload, list, get details, delete, move
   - Editing routes: resize, rotate, grayscale, blur, sharpen, brightness, contrast
-  - Detection routes: bounding boxes, detected objects
-  - End-to-end workflows: complete user scenarios
+  - Inference routes: detect, visualize, models
+  - End-to-end workflows: upload → edit → detect
 
 ### Running Tests
 
@@ -92,7 +93,7 @@ The HTML coverage report will be generated in `htmlcov/index.html`.
 #### Run a Specific Test File
 
 ```bash
-pytest tests/unit/services/test_image_editor.py
+pytest tests/unit/editing/test_edit_service.py
 ```
 
 #### Run Tests with Verbose Output
@@ -152,12 +153,14 @@ For comprehensive test documentation, including detailed test descriptions, fixt
 
 ```
 app/
-├── api/          # API routes and endpoints
+├── api/routes/   # HTTP endpoints
 ├── core/         # Configuration and infrastructure
-├── managers/     # Business logic coordination
-├── schemas/      # Request/response models
-├── services/     # Core business logic
-└── utils/        # Utility functions
+├── dependencies/ # FastAPI DI wiring
+├── media/        # Image CRUD bounded context
+├── editing/      # Pillow transforms bounded context
+├── vision/       # ML inference bounded context
+├── storage/      # Filesystem abstraction
+└── validation/   # Upload validation
 ```
 
 ### Code Style
@@ -170,19 +173,18 @@ app/
 
 ### Architecture Patterns
 
-- **Layered Architecture**: Routes → Managers → Services → Utils
+- **Bounded contexts**: Each domain (`media`, `editing`, `vision`) has `api/`, `domain/`, and a service
 - **Dependency Injection**: Services receive dependencies through constructors
-- **Async/Await**: Use async functions for I/O operations
-- **Error Handling**: Use appropriate HTTP exceptions and error responses
+- **Async/Await**: Blocking I/O and ML work offloaded via `asyncio.to_thread()`
+- **Domain exceptions**: Mapped to HTTP status codes via registered exception handlers
 
 ### Module Organization
 
-Each module has a specific responsibility:
-- **API**: HTTP request handling
-- **Managers**: Business logic coordination
-- **Services**: Core functionality implementation
-- **Schemas**: Data validation and serialization
-- **Utils**: Reusable helper functions
+Each bounded context has a specific responsibility:
+- **api/routes**: HTTP request handling and rate limiting
+- **{domain}/api**: Pydantic models, mappers, exception handlers
+- **{domain}/domain**: DTOs and domain errors
+- **{domain}/service**: Orchestration and business logic
 
 ## Future Improvements
 
@@ -204,7 +206,7 @@ Stay tuned for these upcoming features:
 
 ### Enable Debug Mode
 
-Set `DEBUG=True` in your `.env` file for detailed error messages.
+Set `LOG_LEVEL=DEBUG` in your `.env` file for detailed log output.
 
 ### View Logs
 
@@ -214,7 +216,7 @@ Set `DEBUG=True` in your `.env` file for detailed error messages.
 
 ### Common Debugging Tasks
 
-- **Check API health**: `curl http://localhost:8000/health`
+- **Check API health**: `curl http://localhost:8000/health/ready`
 - **View test coverage**: Open `htmlcov/index.html` in browser
 - **Inspect Docker containers**: `docker-compose ps`
 - **Check environment variables**: Verify `.env` file settings
