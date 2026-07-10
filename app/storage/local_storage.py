@@ -23,8 +23,16 @@ class LocalImageStorage(BaseImageStorage):
         self._dirs = DirectoryManager(directories)
         self._format_extensions = format_extensions
 
+    def _resolve_under_folder(self, folder: str, *parts: str) -> Path:
+        """Join path parts under a folder and reject any escape outside it."""
+        base = self._dirs.get_directory(folder).resolve()
+        candidate = base.joinpath(*parts).resolve()
+        if not candidate.is_relative_to(base):
+            raise StorageOperationError("Resolved path escapes storage directory")
+        return candidate
+
     def destination_path(self, source: str | Path, target_folder: str) -> Path:
-        return self._dirs.get_directory(target_folder) / Path(source).name
+        return self._resolve_under_folder(target_folder, Path(source).name)
 
     def exists(self, path: str | Path) -> bool:
         return Path(path).is_file()
@@ -40,9 +48,10 @@ class LocalImageStorage(BaseImageStorage):
         validated_format = validate_image_format(format, self._format_extensions)
         ext = get_format_extension(validated_format, self._format_extensions)
         if display_filename is not None:
-            file_path = self._dirs.get_directory(folder) / storage_id / display_filename
+            safe_name = Path(display_filename).name
+            file_path = self._resolve_under_folder(folder, storage_id, safe_name)
         else:
-            file_path = self._dirs.get_directory(folder) / f"{storage_id}{ext}"
+            file_path = self._resolve_under_folder(folder, f"{storage_id}{ext}")
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
