@@ -3,11 +3,7 @@ from fastapi.responses import JSONResponse
 from starlette import status
 
 from app.core.logging_config import get_logger
-from app.editing.domain.errors import (
-    EditDomainError,
-    ImageEditError,
-    InvalidEditParamsError,
-)
+from app.editing.domain.errors import EditDomainError, ImageEditError
 
 logger = get_logger("editing_handlers")
 
@@ -25,13 +21,6 @@ async def get_edit_error_response(
     return JSONResponse(status_code=status_code, content={"detail": exc.message})
 
 
-async def invalid_edit_params_handler(
-    request: Request,
-    exc: InvalidEditParamsError,
-) -> JSONResponse:
-    return await get_edit_error_response(request, exc, status.HTTP_422_UNPROCESSABLE_ENTITY)
-
-
 async def image_edit_error_handler(request: Request, exc: ImageEditError) -> JSONResponse:
     return await get_edit_error_response(request, exc, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -41,6 +30,5 @@ async def edit_domain_error_handler(request: Request, exc: EditDomainError) -> J
 
 
 def register_editing_exception_handlers(app: FastAPI) -> None:
-    app.add_exception_handler(InvalidEditParamsError, invalid_edit_params_handler)
     app.add_exception_handler(ImageEditError, image_edit_error_handler)
     app.add_exception_handler(EditDomainError, edit_domain_error_handler)
