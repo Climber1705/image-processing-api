@@ -44,11 +44,7 @@ app/
 └── validation/       # Upload validation
 ```
 
-Module READMEs:
-
-- [Core Module](../app/core/README.md)
-- [API Routes](../app/api/README.md)
-- [Test Suite](../tests/README.md)
+See also: [Test Suite](../tests/README.md)
 
 ---
 
