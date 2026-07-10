@@ -24,7 +24,6 @@ def record_to_dto(record: ImageRecord) -> ImageDTO:
         height=record.height,
         size_bytes=record.size_bytes,
         path=record.path,
-        url=None,
         folder=record.folder,
     )
 
@@ -38,7 +37,6 @@ def to_list_item(dto: ImageDTO) -> ImageListItem:
         height=dto.height,
         size_bytes=dto.size_bytes,
         path=dto.path,
-        url=dto.url,
         folder=dto.folder,
     )
 
@@ -52,7 +50,6 @@ def to_detail_response(dto: ImageDTO) -> ImageDetailResponse:
         height=dto.height,
         size_bytes=dto.size_bytes,
         path=dto.path,
-        url=dto.url,
     )
 
 
