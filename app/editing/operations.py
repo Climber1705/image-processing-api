@@ -33,7 +33,7 @@ def sharpen(
 
 
 def adjust_brightness(img: Image.Image, factor: float) -> Image.Image:
-    return ImageOps.autocontrast(img.point(lambda p: p * factor))
+    return ImageEnhance.Brightness(img).enhance(factor)
 
 
 def adjust_contrast(img: Image.Image, factor: float) -> Image.Image:
