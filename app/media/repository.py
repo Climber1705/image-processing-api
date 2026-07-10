@@ -89,18 +89,6 @@ class ImageRepository:
         self.session.refresh(record)
         return record_to_dto(record)
 
-    def create_from_path(self, path: str | Path, folder: str) -> ImageDTO:
-        path = Path(path)
-        return self.upsert(
-            path=path,
-            folder=folder,
-            display_filename=path.name,
-            image_id=path.stem,
-        )
-
-    def get_by_id(self, image_id: str) -> ImageRecord | None:
-        return self.session.get(ImageRecord, image_id)
-
     def get_by_filename(self, filename: str, folder: str) -> ImageRecord | None:
         return self.session.scalar(
             select(ImageRecord).where(
@@ -121,13 +109,6 @@ class ImageRepository:
                 ImageRecord.content_hash == content_hash,
                 ImageRecord.folder == folder,
             )
-        )
-
-    def get_by_filename_any_folder(self, filename: str) -> ImageRecord | None:
-        return self.session.scalar(
-            select(ImageRecord)
-            .where(ImageRecord.filename == filename)
-            .order_by(ImageRecord.created_at.desc())
         )
 
     def get_by_folder(
