@@ -61,7 +61,7 @@ The Swagger UI provides:
 | POST | `/v1/inference/detect/visualize` | Detect with bounding-box visualization | 5/min |
 | GET | `/v1/inference/models` | Model metadata and readiness | 30/min |
 
-Both detect endpoints accept either a **multipart file upload** or a **stored image reference** via query params (`filename`, `folder`).
+Both detect endpoints accept either a **multipart file upload** or a **stored image reference** via query params (`image_name`, `folder`).
 
 ## Example Requests
 
@@ -77,9 +77,14 @@ curl -X POST "http://localhost:8000/images" \
 **Response:**
 ```json
 {
-  "message": "Image uploaded successfully",
-  "filename": "my_photo.jpg",
-  "format": "JPEG"
+  "status": "success",
+  "path": "app/static/uploaded/<uuid>/my_photo.jpg",
+  "metadata": {
+    "format": "JPEG",
+    "mode": "RGB",
+    "width": 1920,
+    "height": 1080
+  }
 }
 ```
 
@@ -91,17 +96,18 @@ curl http://localhost:8000/images
 
 **Response:**
 ```json
-{
-  "images": [
-    {
-      "name": "my_photo.jpg",
-      "format": "JPEG",
-      "size": 1234567,
-      "uploaded_at": "2024-01-01T12:00:00"
-    }
-  ],
-  "total": 1
-}
+[
+  {
+    "filename": "my_photo.jpg",
+    "format": "JPEG",
+    "mode": "RGB",
+    "width": 1920,
+    "height": 1080,
+    "size_bytes": 245678,
+    "path": "app/static/uploaded/<uuid>/my_photo.jpg",
+    "folder": "uploaded"
+  }
+]
 ```
 
 ### Get Image Details
@@ -128,6 +134,7 @@ curl -X POST "http://localhost:8000/images/photo.jpg/edits/resize?width=800&heig
 curl -X POST "http://localhost:8000/images/photo.jpg/edits/rotate" \
   -H "Content-Type: application/json" \
   -d '{"degrees": 90, "expand": true}'
+```
 
 ### Convert to Grayscale
 
@@ -221,6 +228,7 @@ curl http://localhost:8000/v1/inference/models
 curl -X PATCH "http://localhost:8000/images/my_photo.jpg" \
   -H "Content-Type: application/json" \
   -d '{"source_folder": "uploaded", "target_folder": "edited"}'
+```
 
 ### Delete an Image
 
@@ -253,7 +261,7 @@ The API uses standard HTTP status codes:
 
 - `200 OK`: Request successful
 - `201 Created`: Resource created successfully
-- `400 Bad Request`: Invalid request parameters
+- `400 Bad Request`: Invalid request parameters or corrupt image bytes
 - `404 Not Found`: Resource not found
 - `429 Too Many Requests`: Rate limit exceeded
 - `500 Internal Server Error`: Server error
@@ -276,7 +284,7 @@ Supported upload MIME types (aligned with `Settings.FORMAT_EXTENSIONS` in `app/c
 - **TIFF** (`image/tiff`)
 - **WEBP** (`image/webp`)
 
-Maximum file size: 5MB per image
+Maximum file size: configurable via `MAX_UPLOAD_SIZE_MB` (default 5 MB)
 
 ## Additional Resources
 
