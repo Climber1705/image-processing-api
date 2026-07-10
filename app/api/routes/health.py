@@ -21,7 +21,7 @@ async def health_live():
         content={
             "status": "healthy",
             "service": "Image Processing API",
-            "version": "1.0.0",
+            "version": settings.APP_VERSION,
         },
     )
 
