@@ -10,10 +10,11 @@ from app.media.domain.enums import ImageFolder
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
-        extra="allow",
+        extra="ignore",
     )
 
-    LOG_LEVEL: str = "DEBUG"
+    APP_VERSION: str = "1.0.0"
+    LOG_LEVEL: str = "INFO"
 
     UPLOADED_FOLDER: Path = Field(default_factory=lambda: Path("app/static/uploaded"))
     EDITED_FOLDER: Path = Field(default_factory=lambda: Path("app/static/edited"))
@@ -28,6 +29,7 @@ class Settings(BaseSettings):
     MAX_IMAGE_DIMENSION: int = 1333
     WARMUP_ON_STARTUP: bool = True
     MAX_CONCURRENT_INFERENCES: int = 2
+    MAX_UPLOAD_SIZE_MB: int = 5
 
     FORMAT_EXTENSIONS: dict[str, str] = {
         "JPEG": ".jpg",
