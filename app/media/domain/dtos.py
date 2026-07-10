@@ -10,7 +10,6 @@ class FileMetadataDTO:
     height: int
     size_bytes: int
     path: str
-    url: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,7 +23,6 @@ class ImageDTO:
     size_bytes: int
     path: str
     folder: str
-    url: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
