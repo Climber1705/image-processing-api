@@ -7,8 +7,6 @@ from app.core.config import settings
 
 logger = logging.getLogger("validator")
 
-DEFAULT_MAX_SIZE_MB = 5
-
 # MIME types aligned with Settings.FORMAT_EXTENSIONS (app/core/config.py).
 FORMAT_TO_MIME: dict[str, str] = {
     "JPEG": "image/jpeg",
@@ -72,8 +70,10 @@ def validate_image_size(
 def validate_upload(
     image: UploadFile,
     allowed_types: tuple[str, ...] | None = None,
-    max_size_mb: int = DEFAULT_MAX_SIZE_MB,
+    max_size_mb: int | None = None,
 ) -> None:
+    if max_size_mb is None:
+        max_size_mb = settings.MAX_UPLOAD_SIZE_MB
     validate_image_type(image, allowed_types)
     validate_image_size(image, max_size_mb * 1024 * 1024)
 
