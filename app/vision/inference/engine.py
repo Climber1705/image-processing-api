@@ -67,7 +67,7 @@ class InferenceEngine:
         inputs = preprocess(dummy, self.processor, self.device)
 
         with torch.inference_mode():
-            self.model(**inputs)
+            self.model(**inputs)  # type: ignore[operator]
 
         self._warmed_up = True
         logger.info("Inference engine warmup complete")
@@ -85,7 +85,7 @@ class InferenceEngine:
         )
 
         with torch.inference_mode():
-            outputs = self.model(**inputs)
+            outputs = self.model(**inputs)  # type: ignore[operator]
             self._inference_count += 1
 
         detections = postprocess(
