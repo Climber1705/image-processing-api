@@ -9,7 +9,9 @@ from app.media.domain.errors import (
     ImageNotFoundError,
     ImageOperationError,
     ImageSaveError,
+    InvalidFilenameError,
     InvalidFolderError,
+    InvalidImageContentError,
     InvalidMoveError,
     MediaDomainError,
 )
@@ -42,6 +44,17 @@ async def invalid_move_handler(request: Request, exc: InvalidMoveError) -> JSONR
     return await get_media_error_response(request, exc, status.HTTP_400_BAD_REQUEST)
 
 
+async def invalid_filename_handler(request: Request, exc: InvalidFilenameError) -> JSONResponse:
+    return await get_media_error_response(request, exc, status.HTTP_400_BAD_REQUEST)
+
+
+async def invalid_image_content_handler(
+    request: Request,
+    exc: InvalidImageContentError,
+) -> JSONResponse:
+    return await get_media_error_response(request, exc, status.HTTP_400_BAD_REQUEST)
+
+
 async def image_conflict_handler(request: Request, exc: ImageConflictError) -> JSONResponse:
     return await get_media_error_response(request, exc, status.HTTP_409_CONFLICT)
 
@@ -66,6 +79,8 @@ def register_media_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(ImageNotFoundError, image_not_found_handler)
     app.add_exception_handler(InvalidFolderError, invalid_folder_handler)
     app.add_exception_handler(InvalidMoveError, invalid_move_handler)
+    app.add_exception_handler(InvalidFilenameError, invalid_filename_handler)
+    app.add_exception_handler(InvalidImageContentError, invalid_image_content_handler)
     app.add_exception_handler(ImageConflictError, image_conflict_handler)
     app.add_exception_handler(ImageSaveError, image_save_handler)
     app.add_exception_handler(ImageOperationError, image_operation_handler)
