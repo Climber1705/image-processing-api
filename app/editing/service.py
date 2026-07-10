@@ -8,11 +8,11 @@ from app.core.logging_config import get_logger
 from app.editing import operations
 from app.editing.domain.dtos import EditResultDTO
 from app.editing.domain.errors import ImageEditError
-from app.editing.filename import build_display_filename
 from app.media.domain.enums import ImageFolder
 from app.media.domain.errors import ImageNotFoundError
 from app.media.repository import ImageRepository
 from app.media.service import ImageService
+from app.media.utils.filename import build_display_filename
 from app.storage.base_storage import BaseImageStorage
 
 logger = get_logger("image_edit_service")
