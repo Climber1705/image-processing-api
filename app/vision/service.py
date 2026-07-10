@@ -9,6 +9,7 @@ from app.core.logging_config import get_logger
 from app.media.domain.enums import ImageFolder
 from app.media.repository import ImageRepository
 from app.media.service import ImageService
+from app.media.utils.filename import build_display_filename
 from app.storage.base_storage import BaseImageStorage
 from app.vision.domain.dtos import DetectResponseDTO
 from app.vision.domain.errors import InferenceError, ModelNotReadyError
@@ -64,10 +65,8 @@ class InferenceService:
         return base64.b64encode(buffer.getvalue()).decode("ascii")
 
     def _persist_annotation(self, annotated: Image.Image, source_filename: str) -> str:
-        source_stem = Path(source_filename).stem
-        source_ext = Path(source_filename).suffix or ".jpg"
-        display_filename = f"{source_stem}_bounding_boxes{source_ext}"
-        save_format = source_ext.lstrip(".").upper() or "PNG"
+        display_filename = build_display_filename(source_filename, suffix="bounding_boxes")
+        save_format = Path(display_filename).suffix.lstrip(".").upper() or "PNG"
         storage_id = self.image_repository.get_or_create_image_id(
             display_filename,
             ImageFolder.DETECTED,
