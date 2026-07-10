@@ -28,7 +28,6 @@ class ImageListItem(BaseModel):
     height: int
     size_bytes: int
     path: str
-    url: str | None = None
     folder: str
 
 
@@ -40,4 +39,3 @@ class ImageDetailResponse(BaseModel):
     height: int
     size_bytes: int
     path: str
-    url: str | None = None
