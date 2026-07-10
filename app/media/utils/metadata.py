@@ -17,7 +17,6 @@ def get_image_metadata(image_path: Path) -> FileMetadataDTO:
                 height=image.height,
                 size_bytes=os.path.getsize(image_path),
                 path=str(image_path),
-                url=None,
             )
     except FileNotFoundError as exc:
         raise ImageNotFoundError("Image not found") from exc
