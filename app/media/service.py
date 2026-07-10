@@ -18,7 +18,9 @@ from app.media.domain.errors import (
     ImageNotFoundError,
     ImageOperationError,
     ImageSaveError,
+    InvalidFilenameError,
     InvalidFolderError,
+    InvalidImageContentError,
     InvalidMoveError,
 )
 from app.media.repository import ImageRepository
@@ -26,6 +28,7 @@ from app.media.utils.filename import get_display_filename
 from app.media.utils.hash import compute_checksum
 from app.media.utils.mappers import record_to_dto
 from app.storage.base_storage import BaseImageStorage
+from app.storage.errors import InvalidImageFileError
 from app.validation.validator import get_format_extension, validate_image_format
 
 logger = get_logger("image_service")
@@ -63,13 +66,18 @@ class ImageService:
 
         image_id = str(uuid.uuid4())
         file.file.seek(0)
-        saved_path = self.storage.save(
-            file=file.file,
-            folder=ImageFolder.UPLOADED,
-            storage_id=image_id,
-            format=output_format,
-            display_filename=display_filename,
-        )
+        try:
+            saved_path = self.storage.save(
+                file=file.file,
+                folder=ImageFolder.UPLOADED,
+                storage_id=image_id,
+                format=output_format,
+                display_filename=display_filename,
+            )
+        except InvalidImageFileError as exc:
+            raise InvalidImageContentError(str(exc.message)) from exc
+        except InvalidFilenameError:
+            raise
 
         try:
             image = self.repository.create(
@@ -99,7 +107,7 @@ class ImageService:
             raise ImageSaveError("Failed to save image") from None
         except Exception as exc:
             self.storage.delete(saved_path)
-            if isinstance(exc, (ImageNotFoundError, ImageSaveError)):
+            if isinstance(exc, (ImageNotFoundError, ImageSaveError, InvalidImageContentError)):
                 raise
             logger.error("Failed to save uploaded image: %s", exc)
             raise ImageSaveError(f"Failed to save image: {exc}") from exc
