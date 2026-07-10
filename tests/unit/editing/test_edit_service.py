@@ -7,9 +7,9 @@ from unittest.mock import Mock
 
 import pytest
 from app.editing.domain.errors import ImageEditError
-from app.editing.filename import build_display_filename
 from app.editing.service import ImageEditService
 from app.media.domain.dtos import ImageDTO
+from app.media.utils.filename import build_display_filename
 from app.storage.local_storage import LocalImageStorage
 from PIL import Image
 
@@ -25,7 +25,6 @@ def _make_image_dto(**overrides) -> ImageDTO:
         "size_bytes": 1024,
         "path": "/tmp/test.jpg",
         "folder": "edited",
-        "url": None,
     }
     defaults.update(overrides)
     return ImageDTO(**defaults)

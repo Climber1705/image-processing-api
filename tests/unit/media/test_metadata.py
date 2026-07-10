@@ -26,7 +26,6 @@ class TestImageMetadata:
         assert metadata.height == 600
         assert metadata.size_bytes > 0
         assert metadata.path == str(image_path)
-        assert metadata.url is None
 
     def test_get_metadata_png_format(self, temp_directories):
         """Test metadata extraction for PNG format."""

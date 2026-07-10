@@ -8,7 +8,7 @@ from io import BytesIO
 from pathlib import Path
 
 import pytest
-from app.storage.errors import InvalidImageFileError
+from app.storage.errors import InvalidImageFileError, StorageOperationError
 from app.storage.local_storage import LocalImageStorage
 from PIL import Image
 
@@ -88,6 +88,36 @@ class TestLocalImageStorage:
 
             assert Path(file_path).exists()
             assert folder in file_path
+
+    def test_save_neutralizes_traversal_in_display_filename(
+        self, storage_service, temp_directories, valid_upload_file
+    ):
+        valid_upload_file.file.seek(0)
+        file_path = Path(
+            storage_service.save(
+                file=valid_upload_file.file,
+                folder="uploaded",
+                storage_id="11111111-1111-1111-1111-111111111111",
+                format="JPEG",
+                display_filename="../../escape.jpg",
+            )
+        )
+        uploaded_root = temp_directories["uploaded"].resolve()
+        assert file_path.resolve().is_relative_to(uploaded_root)
+        assert file_path.name == "escape.jpg"
+
+    def test_save_rejects_traversal_in_storage_id(
+        self, storage_service, valid_upload_file
+    ):
+        valid_upload_file.file.seek(0)
+        with pytest.raises(StorageOperationError, match="escapes storage directory"):
+            storage_service.save(
+                file=valid_upload_file.file,
+                folder="uploaded",
+                storage_id="../../escape",
+                format="JPEG",
+                display_filename="photo.jpg",
+            )
 
     def test_read_success(self, storage_service, temp_directories):
         """Test reading an existing file by path."""

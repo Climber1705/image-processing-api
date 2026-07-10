@@ -20,7 +20,7 @@ docker-compose -f docker-compose.yml up --build -d
 
 **Production Features:**
 - Optimized image size (build dependencies removed after installation)
-- Health checks configured (uses `/health` endpoint)
+- Health checks configured (uses `/health/ready` endpoint)
 - Automatic restart on failure
 - Production logging (LOG_LEVEL=INFO)
 - Persistent data volumes for images and logs
@@ -64,8 +64,9 @@ docker-compose -f docker-compose.yml down -v
 
 1. **Environment Variables**: Never commit `.env` files to version control
 2. **Logging**: Use `LOG_LEVEL=INFO` or higher in production
-4. **Ports**: Only expose necessary ports (8000 for API)
-5. **Authentication**: Not implemented — add API keys or OAuth before exposing publicly
+3. **Ports**: Only expose necessary ports (8000 for API)
+4. **Authentication**: Not implemented — add API keys or OAuth before exposing publicly
+5. **Upload limits**: Tune `MAX_UPLOAD_SIZE_MB` and keep rate limits enabled
 
 ### Performance
 
@@ -82,12 +83,12 @@ docker-compose -f docker-compose.yml down -v
 The API includes a health check endpoint:
 
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8000/health/ready
 ```
 
 **Docker Health Check:**
 - Configured in `docker-compose.yml`
-- Uses the `/health` endpoint
+- Uses the `/health/ready` endpoint
 - Automatically restarts unhealthy containers
 
 #### Logging
@@ -146,7 +147,7 @@ The production Docker setup uses named volumes for data persistence:
 
 #### Health Checks
 
-- Docker healthcheck configured using `/health` endpoint
+- Docker healthcheck configured using `/health/ready` endpoint
 - Automatic restart on failure
 - Monitor container health status
 
@@ -165,8 +166,8 @@ The production Docker setup uses named volumes for data persistence:
 #### Environment Configuration
 
 - Separate configurations for development and production
-- Environment variables for flexible configuration
-- No hardcoded values
+- Tunable settings via environment variables (see `.env.example`)
+- Rate limits and some operational defaults remain code-configured for this portfolio scope
 
 ## Deployment Checklist
 

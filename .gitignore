@@ -1,8 +1,12 @@
 # Ignore virtual environment and cache files
-.venv
+.venv/
+venv/
 __pycache__/
+*.py[cod]
+*$py.class
 
 # Ignore logs and temporary files
+logs/
 *.log
 
 # Ignore .env file
@@ -11,8 +15,16 @@ __pycache__/
 # Internal README rewrite notes (not for publication)
 README_NOTES.md
 
-# Ignore pytest cache, coverage, and htmlcov
+# Packaging / build artifacts
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Ignore pytest cache, coverage, type-checker, and linter caches
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
 .coverage.*
 htmlcov/

@@ -128,7 +128,7 @@ Common issues and their solutions for the Image Processing API.
 **Issue**: API doesn't respond or returns timeouts
 
 **Solutions**:
-- Check if the server is running: `curl http://localhost:8000/health`
+- Check if the server is running: `curl http://localhost:8000/health/ready`
 - Check server logs for errors
 - Verify port 8000 is not blocked by firewall
 - For Docker, check container status: `docker-compose ps`

@@ -109,7 +109,6 @@ def mock_image_service(temp_directories: dict[str, Path], mock_local_storage: Mo
                 height=img.height,
                 size_bytes=os.path.getsize(image_path),
                 path=str(image_path),
-                url=None,
                 folder=folder,
             )
 
@@ -305,7 +304,6 @@ def mock_image_edit_service(temp_directories: dict[str, Path]) -> Mock:
                 size_bytes=0,
                 path=str(output_path),
                 folder="edited",
-                url=None,
             ),
         )
     

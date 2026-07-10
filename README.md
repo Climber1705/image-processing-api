@@ -39,6 +39,7 @@ flowchart LR
 - FastAPI dependency injection wires repositories, storage, and services into route handlers (`app/dependencies/`).
 - Per-endpoint rate limits via slowapi decorators and `SlowAPIMiddleware` (`app/core/rate_limiting.py`, `app/main.py`).
 - Domain exceptions in each bounded context map to HTTP status codes via registered handlers (`app/media/api/handlers.py`, `app/editing/api/handlers.py`, `app/vision/api/handlers.py`).
+- Filename sanitization and resolved-path containment checks prevent path traversal on storage writes (`app/media/utils/filename.py`, `app/storage/local_storage.py`).
 - Rotating file logging to `logs/app.log` (`app/core/logging_config.py`).
 
 ### ML & data
@@ -90,6 +91,8 @@ pip install -e ".[test]"
 cp .env.example .env
 uvicorn app.main:app --reload
 ```
+
+Required configuration lives in `.env` (copy from `.env.example`). Common knobs: `LOG_LEVEL`, `MAX_UPLOAD_SIZE_MB`, `MAX_CONCURRENT_INFERENCES`, `MODEL_NAME`, `INFERENCE_DEVICE`, `DATABASE_URL`.
 
 Upload an image:
 
